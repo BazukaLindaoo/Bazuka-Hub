@@ -1,1960 +1,6800 @@
-local BazukaA1 = {};
-
-BazukaA1["1"] = Instance.new("ScreenGui", game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"));
-BazukaA1["1"]["ZIndexBehavior"] = Enum.ZIndexBehavior.Sibling;
-
-BazukaA1["2"] = Instance.new("Frame", BazukaA1["1"]);
-BazukaA1["2"]["BorderSizePixel"] = 0;
-BazukaA1["2"]["BackgroundColor3"] = Color3.fromRGB(0, 0, 0);
-BazukaA1["2"]["Size"] = UDim2.new(0, 50, 0, 50);
-BazukaA1["2"]["Draggable"] = true
-BazukaA1["2"]["Position"] = UDim2.new(0.20, 0, -0.1, 0);
-BazukaA1["2"]["BorderColor3"] = Color3.fromRGB(0, 0, 0);
-
-
-BazukaA1["3"] = Instance.new("UICorner", BazukaA1["2"]);
-BazukaA1["3"]["CornerRadius"] = UDim.new(1, 0);
-
-BazukaA1["4"] = Instance.new("TextButton", BazukaA1["2"]);
-BazukaA1["4"]["TextWrapped"] = true;
-BazukaA1["4"]["BorderSizePixel"] = 0;
-BazukaA1["4"]["TextSize"] = 14;
-BazukaA1["4"]["TextColor3"] = Color3.fromRGB(255, 255, 255);
-BazukaA1["4"]["BackgroundColor3"] = Color3.fromRGB(255, 255, 255);
-BazukaA1["4"]["FontFace"] = Font.new([[rbxasset://fonts/families/SourceSansPro.json]], Enum.FontWeight.Bold, Enum.FontStyle.Normal);
-BazukaA1["4"]["Size"] = UDim2.new(0, 50, 0, 56);
-BazukaA1["4"]["BackgroundTransparency"] = 1;
-BazukaA1["4"]["BorderColor3"] = Color3.fromRGB(0, 0, 0);
-BazukaA1["4"]["Text"] = [[STOP TWEEN]];
-BazukaA1["4"]["Position"] = UDim2.new(0, 0, -0.07273, 0);
-BazukaA1["5"] = Instance.new("UIStroke", BazukaA1["4"]);
-BazukaA1["5"]["Color"] = Color3.fromRGB(255, 0, 0);
-
-BazukaA1["6"] = Instance.new("UIStroke", BazukaA1["2"]);
-BazukaA1["6"]["Color"] = Color3.fromRGB(169, 238, 8);
-
-local function StopTween()
-    if _G.StopTween then
-        return
-    end
-    
-    _G.StopTween = true
-    wait()
-    local player = game.Players.LocalPlayer
-    local character = player.Character
-    if character and character:IsDescendantOf(game.Workspace) then
-        local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-        if humanoidRootPart then
-            humanoidRootPart.CFrame = humanoidRootPart.CFrame
-        end
-    end
-    wait()    
-    if character:FindFirstChild("BodyClip") then
-        character.BodyClip:Destroy()
-    end
-    if character:FindFirstChild("PartTele") then
-        character.PartTele:Destroy()
-    end
-    _G.StopTween = false
-end
-
-BazukaA1["4"].MouseButton1Click:Connect(function()
-    StopTween()
-end)
-
-_G.FastAttack = true
-
-if _G.FastAttack then
-    local _ENV = (getgenv or getrenv or getfenv)()
-
-    local function SafeWaitForChild(parent, childName)
-        local success, result = pcall(function()
-            return parent:WaitForChild(childName)
-        end)
-        if not success or not result then
-            warn("noooooo: " .. childName)
-        end
-        return result
-    end
-
-    local function WaitChilds(path, ...)
-        local last = path
-        for _, child in {...} do
-            last = last:FindFirstChild(child) or SafeWaitForChild(last, child)
-            if not last then break end
-        end
-        return last
-    end
-
-    local VirtualInputManager = game:GetService("VirtualInputManager")
-    local CollectionService = game:GetService("CollectionService")
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local TeleportService = game:GetService("TeleportService")
-    local RunService = game:GetService("RunService")
-    local Players = game:GetService("Players")
-    local Player = Players.LocalPlayer
-
-    if not Player then
-        warn("KhÃ´ng tÃ¬m tháº¥y ngÆ°á»i chÆ¡i cá»¥c bá»™.")
-        return
-    end
-
-    local Remotes = SafeWaitForChild(ReplicatedStorage, "Remotes")
-    if not Remotes then return end
-
-    local Validator = SafeWaitForChild(Remotes, "Validator")
-    local CommF = SafeWaitForChild(Remotes, "CommF_")
-    local CommE = SafeWaitForChild(Remotes, "CommE")
-
-    local ChestModels = SafeWaitForChild(workspace, "ChestModels")
-    local WorldOrigin = SafeWaitForChild(workspace, "_WorldOrigin")
-    local Characters = SafeWaitForChild(workspace, "Characters")
-    local Enemies = SafeWaitForChild(workspace, "Enemies")
-    local Map = SafeWaitForChild(workspace, "Map")
-
-    local EnemySpawns = SafeWaitForChild(WorldOrigin, "EnemySpawns")
-    local Locations = SafeWaitForChild(WorldOrigin, "Locations")
-
-    local RenderStepped = RunService.RenderStepped
-    local Heartbeat = RunService.Heartbeat
-    local Stepped = RunService.Stepped
-
-    local Modules = SafeWaitForChild(ReplicatedStorage, "Modules")
-    local Net = SafeWaitForChild(Modules, "Net")
-
-    local sethiddenproperty = sethiddenproperty or function(...) return ... end
-    local setupvalue = setupvalue or (debug and debug.setupvalue)
-    local getupvalue = getupvalue or (debug and debug.getupvalue)
-
-    local Settings = {
-        AutoClick = true,
-        ClickDelay = 0
-    }
-
-    local Module = {}
-
-    Module.FastAttack = (function()
-        if _ENV.rz_FastAttack then
-            return _ENV.rz_FastAttack
-        end
-
-        local FastAttack = {
-            Distance = 100,
-            attackMobs = true,
-            attackPlayers = true,
-            Equipped = nil
-        }
-
-        local RegisterAttack = SafeWaitForChild(Net, "RE/RegisterAttack")
-        local RegisterHit = SafeWaitForChild(Net, "RE/RegisterHit")
-
-        local function IsAlive(character)
-            return character and character:FindFirstChild("Humanoid") and character.Humanoid.Health > 0
-        end
-
-        local function ProcessEnemies(OthersEnemies, Folder)
-            local BasePart = nil
-            for _, Enemy in Folder:GetChildren() do
-                local Head = Enemy:FindFirstChild("Head")
-                if Head and IsAlive(Enemy) and Player:DistanceFromCharacter(Head.Position) < FastAttack.Distance then
-                    if Enemy ~= Player.Character then
-                        table.insert(OthersEnemies, { Enemy, Head })
-                        BasePart = Head
-                    end
-                end
-            end
-            return BasePart
-        end
-
-        function FastAttack:Attack(BasePart, OthersEnemies)
-            if not BasePart or #OthersEnemies == 0 then return end
-            RegisterAttack:FireServer(Settings.ClickDelay or 0)
-            RegisterHit:FireServer(BasePart, OthersEnemies)
-        end
-
-        function FastAttack:AttackNearest()
-            local OthersEnemies = {}
-            local Part1 = ProcessEnemies(OthersEnemies, Enemies)
-            local Part2 = ProcessEnemies(OthersEnemies, Characters)
-
-            local character = Player.Character
-            if not character then return end
-            local equippedWeapon = character:FindFirstChildOfClass("Tool")
-
-            if equippedWeapon and equippedWeapon:FindFirstChild("LeftClickRemote") then
-                for _, enemyData in ipairs(OthersEnemies) do
-                    local enemy = enemyData[1]
-                    local direction = (enemy.HumanoidRootPart.Position - character:GetPivot().Position).Unit
-                    pcall(function()
-                        equippedWeapon.LeftClickRemote:FireServer(direction, 1)
-                    end)
-                end
-            elseif #OthersEnemies > 0 then
-                self:Attack(Part1 or Part2, OthersEnemies)
-            else
-                task.wait(0)
-            end
-        end
-
-        function FastAttack:BladeHits()
-            local Equipped = IsAlive(Player.Character) and Player.Character:FindFirstChildOfClass("Tool")
-            if Equipped and Equipped.ToolTip ~= "Gun" then
-                self:AttackNearest()
-            else
-                task.wait(0)
-            end
-        end
-
-        task.spawn(function()
-            while task.wait(Settings.ClickDelay) do
-                if Settings.AutoClick then
-                    FastAttack:BladeHits()
-                end
-            end
-        end)
-
-        _ENV.rz_FastAttack = FastAttack
-        return FastAttack
-    end)()
-end
-   
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
-if not player.Team then
-    if getgenv().Team == "Marines" then
-        ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam", "Marines")
-    elseif getgenv().Team == "Pirates" then
-        ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam", "Pirates")
-    end
-    repeat
-        task.wait(1)
-        local chooseTeam = playerGui:FindFirstChild("ChooseTeam", true)
-        local uiController = playerGui:FindFirstChild("UIController", true)
-        if chooseTeam and chooseTeam.Visible and uiController then
-            for _, v in pairs(getgc(true)) do
-                if type(v) == "function" and getfenv(v).script == uiController then
-                    local constant = getconstants(v)
-                    pcall(function()
-                        if (constant[1] == "Pirates" or constant[1] == "Marines") and #constant == 1 then
-                            if constant[1] == getgenv().Team then
-                                v(getgenv().Team)
-                            end
-                        end
-                    end)
-                end
-            end
-        end
-    until player.Team
-end   
-   
-hookfunction(require(game:GetService("ReplicatedStorage").Effect.Container.Death), function()end)
-hookfunction(require(game:GetService("ReplicatedStorage").Effect.Container.Respawn), function()end)
-if game.PlaceId == 2753915549 then
-        World1 = true
-    elseif game.PlaceId == 4442272183 then
-        World2 = true
-    elseif game.PlaceId == 7449423635 then
-        World3 = true
-    end
-
-         function MaterialMon()
-         if _G.SelectMaterial == "Radiactive Material" then
-               MMon = "Factory Staff"
-	            MPos = CFrame.new(-105.889565, 72.8076935, -670.247986, -0.965929747, 0, -0.258804798, 0, 1, 0, 0.258804798, 0, -0.965929747)
-				SP = "Bar"
-			elseif _G.SelectMaterial == "Leather + Scrap Metal" then
-			if game.PlaceId == 2753915549 then
-				MMon = "Pirate"
-				MPos = CFrame.new(-967.433105, 13.5999937, 4034.24707, -0.258864403, 0, -0.965913713, 0, 1, 0, 0.965913713, 0, -0.258864403)
-				SP = "Pirate"
-				MMon = "Brute"
-				MPos = CFrame.new(-1191.41235, 15.5999985, 4235.50928, 0.629286051, -0, -0.777173758, 0, 1, -0, 0.777173758, 0, 0.629286051)
-				SP = "Pirate"
-				elseif game.PlaceId == 4442272183 then
-		    		MMon = "Mercenary"
-					MPos = CFrame.new(-986.774475, 72.8755951, 1088.44653, -0.656062722, 0, 0.754706323, 0, 1, 0, -0.754706323, 0, -0.656062722)
-					SP = "DressTown"
-				elseif game.PlaceId == 7449423635 then
-			    	MMon = "Pirate Millionaire"
-		  			MPos = CFrame.new(-118.809372, 55.4874573, 5649.17041, -0.965929747, 0, 0.258804798, 0, 1, 0, -0.258804798, 0, -0.965929747)
-					SP = "Default"
-				end
-			elseif _G.SelectMaterial == "Magma Ore" then
-    			if game.PlaceId == 2753915549 then
-					MMon = "Military Soldier"
-					MPos = CFrame.new(-5565.60156, 9.10001755, 8327.56934, -0.838688731, 0, -0.544611216, 0, 1, 0, 0.544611216, 0, -0.838688731)
-					SP = "Magma"				
-					MMon = "Military Spy"
-					MPos = CFrame.new(-5806.70068, 78.5000458, 8904.46973, 0.707134247, 0, 0.707079291, 0, 1, 0, -0.707079291, 0, 0.707134247)
-					SP = "Magma"
-				elseif game.PlaceId == 4442272183 then
-    				MMon = "Lava Pirate"
-					MPos = CFrame.new(-5158.77051, 14.4791956, -4654.2627, -0.848060489, 0, -0.529899538, 0, 1, 0, 0.529899538, 0, -0.848060489)
-					SP = "CircleIslandFire"
-				end
-				elseif _G.SelectMaterial == "Fish Tail" then
-				if game.PlaceId == 2753915549 then
-					MMon = "Fishman Warrior"
-					MPos = CFrame.new(60943.9023, 17.9492188, 1744.11133, 0.826706648, -0, -0.562633216, 0, 1, -0, 0.562633216, 0, 0.826706648)
-					SP = "Underwater City"
-					MMon = "Fishman Commando"
-					MPos = CFrame.new(61760.8984, 18.0800781, 1460.11133, -0.632549644, 0, -0.774520278, 0, 1, 0, 0.774520278, 0, -0.632549644)
-					SP = "Underwater City"
-				elseif game.PlaceId == 7449423635 then
-		    		MMon = "Fishman Captain"
-	    			MPos = CFrame.new(-10828.1064, 331.825989, -9049.14648, -0.0912091732, 0, 0.995831788, 0, 1, 0, -0.995831788, 0, -0.0912091732)
-			    	SP = "PineappleTown"
-	     		end
-				elseif _G.SelectMaterial == "Angel Wings" then
-					MMon = "Royal Soldier"
-					MPos = CFrame.new(-7759.45898, 5606.93652, -1862.70276, -0.866007447, 0, -0.500031412, 0, 1, 0, 0.500031412, 0, -0.866007447)
-					SP = "SkyArea2"				
-					elseif _G.SelectMaterial == "Mystic Droplet" then
-	    			MMon = "Water Fighter"
-	    			MPos = CFrame.new(-3331.70459, 239.138336, -10553.3564, -0.29242146, 0, 0.95628953, 0, 1, 0, -0.95628953, 0, -0.29242146)
-				    SP = "ForgottenIsland"
-				   elseif _G.SelectMaterial == "Vampire Fang" then
-			    	MMon = "Vampire"
-				    MPos = CFrame.new(-6132.39453, 9.00769424, -1466.16919, -0.927179813, 0, -0.374617696, 0, 1, 0, 0.374617696, 0, -0.927179813)
-			    	SP = "Graveyard"
-			   elseif _G.SelectMaterial == "Gunpowder" then
-		    		MMon = "Pistol Billionaire"
-		    		MPos = CFrame.new(-185.693283, 84.7088699, 6103.62744, 0.90629667, -0, -0.422642082, 0, 1, -0, 0.422642082, 0, 0.90629667)
-		   		    SP = "Mansion"	
-		       elseif _G.SelectMaterial == "Mini Tusk" then
-			    	MMon = "Mythological Pirate"
-			    	MPos = CFrame.new(-13456.0498, 469.433228, -7039.96436, 0, 0, 1, 0, 1, -0, -1, 0, 0)
-			    	SP = "BigMansion"
-		    	 elseif _G.SelectMaterial == "Conjured Cocoa" then
-			    	MMon = "Chocolate Bar Battler"
-				    MPos = CFrame.new(582.828674, 25.5824986, -12550.7041, -0.766061664, 0, -0.642767608, 0, 1, 0, 0.642767608, 0, -0.766061664)
-				SP = "Chocolate"						
-				end
-			end     
-     function CheckQuest() 
-        MyLevel = game:GetService("Players").LocalPlayer.Data.Level.Value
-        if World1 then
-            if (MyLevel >= 1 and MyLevel <= 9) or SelectMonster == "Bandit" then
-                Mon = "Bandit"
-                LevelQuest = 1
-                NameQuest = "BanditQuest1"
-                NameMon = "Bandit"
-                CFrameQuest = CFrame.new(1059.37195, 15.4495068, 1550.4231, 0.939700544, -0, -0.341998369, 0, 1, -0, 0.341998369, 0, 0.939700544)
-                CFrameMon = CFrame.new(1045.962646484375, 27.00250816345215, 1560.8203125)              
-            elseif (MyLevel >= 10 and MyLevel <= 14) or SelectMonster == "Monkey" then
-                Mon = "Monkey"
-                LevelQuest = 1
-                NameQuest = "JungleQuest"
-                NameMon = "Monkey"
-                CFrameQuest = CFrame.new(-1598.08911, 35.5501175, 153.377838, 0, 0, 1, 0, 1, -0, -1, 0, 0)
-                CFrameMon = CFrame.new(-1448.51806640625, 67.85301208496094, 11.46579647064209)                
-            elseif (MyLevel >= 15 and MyLevel <= 29) or SelectMonster == "Gorilla" then
-                Mon = "Gorilla"
-                LevelQuest = 2
-                NameQuest = "JungleQuest"
-                NameMon = "Gorilla"
-                CFrameQuest = CFrame.new(-1598.08911, 35.5501175, 153.377838, 0, 0, 1, 0, 1, -0, -1, 0, 0)
-                CFrameMon = CFrame.new(-1129.8836669921875, 40.46354675292969, -525.4237060546875)
-            elseif (MyLevel >= 30 and MyLevel <= 39) or SelectMonster == "Pirate" then
-                Mon = "Pirate"
-                LevelQuest = 1
-                NameQuest = "BuggyQuest1"
-                NameMon = "Pirate"
-                CFrameQuest = CFrame.new(-1141.07483, 4.10001802, 3831.5498, 0.965929627, -0, -0.258804798, 0, 1, -0, 0.258804798, 0, 0.965929627)
-                CFrameMon = CFrame.new(-1103.513427734375, 13.752052307128906, 3896.091064453125)                
-            elseif (MyLevel >= 40 and MyLevel <= 59) or SelectMonster == "Brute" then
-                Mon = "Brute"
-                LevelQuest = 2
-                NameQuest = "BuggyQuest1"
-                NameMon = "Brute"
-                CFrameQuest = CFrame.new(-1141.07483, 4.10001802, 3831.5498, 0.965929627, -0, -0.258804798, 0, 1, -0, 0.258804798, 0, 0.965929627)
-                CFrameMon = CFrame.new(-1140.083740234375, 14.809885025024414, 4322.92138671875)
-            elseif (MyLevel >= 60 and MyLevel <= 74) or SelectMonster == "Desert Bandit" then
-                Mon = "Desert Bandit"
-                LevelQuest = 1
-                NameQuest = "DesertQuest"
-                NameMon = "Desert Bandit"
-                CFrameQuest = CFrame.new(894.488647, 5.14000702, 4392.43359, 0.819155693, -0, -0.573571265, 0, 1, -0, 0.573571265, 0, 0.819155693)
-                CFrameMon = CFrame.new(924.7998046875, 6.44867467880249, 4481.5859375)            
-            elseif (MyLevel >= 75 and MyLevel <= 89) or SelectMonster == "Desert Officer" then
-                Mon = "Desert Officer"
-                LevelQuest = 2
-                NameQuest = "DesertQuest"
-                NameMon = "Desert Officer"
-                CFrameQuest = CFrame.new(894.488647, 5.14000702, 4392.43359, 0.819155693, -0, -0.573571265, 0, 1, -0, 0.573571265, 0, 0.819155693)
-                CFrameMon = CFrame.new(1608.2822265625, 8.614224433898926, 4371.00732421875)               
-            elseif (MyLevel >= 90 and MyLevel <= 99) or SelectMonster == "Snow Bandit" then
-                Mon = "Snow Bandit"
-                LevelQuest = 1
-                NameQuest = "SnowQuest"
-                NameMon = "Snow Bandit"
-                CFrameQuest = CFrame.new(1389.74451, 88.1519318, -1298.90796, -0.342042685, 0, 0.939684391, 0, 1, 0, -0.939684391, 0, -0.342042685)
-                CFrameMon = CFrame.new(1354.347900390625, 87.27277374267578, -1393.946533203125)
-                
-            elseif (MyLevel >= 100 and MyLevel <= 119) or SelectMonster == "Snowman" then
-                Mon = "Snowman"
-                LevelQuest = 2
-                NameQuest = "SnowQuest"
-                NameMon = "Snowman"
-                CFrameQuest = CFrame.new(1389.74451, 88.1519318, -1298.90796, -0.342042685, 0, 0.939684391, 0, 1, 0, -0.939684391, 0, -0.342042685)
-                CFrameMon = CFrame.new(1201.6412353515625, 144.57958984375, -1550.0670166015625)
-            elseif (MyLevel >= 120 and MyLevel <= 149) or SelectMonster == "Chief Petty Officer" then
-                Mon = "Chief Petty Officer"
-                LevelQuest = 1
-                NameQuest = "MarineQuest2"
-                NameMon = "Chief Petty Officer"
-                CFrameQuest = CFrame.new(-5039.58643, 27.3500385, 4324.68018, 0, 0, -1, 0, 1, 0, 1, 0, 0)
-                CFrameMon = CFrame.new(-4881.23095703125, 22.65204429626465, 4273.75244140625)
-            elseif (MyLevel >= 150 and MyLevel <= 174) or SelectMonster == "Sky Bandit" then
-                Mon = "Sky Bandit"
-                LevelQuest = 1
-                NameQuest = "SkyQuest"
-                NameMon = "Sky Bandit"
-                CFrameQuest = CFrame.new(-4839.53027, 716.368591, -2619.44165, 0.866007268, 0, 0.500031412, 0, 1, 0, -0.500031412, 0, 0.866007268)
-                CFrameMon = CFrame.new(-4953.20703125, 295.74420166015625, -2899.22900390625)
-                
-            elseif (MyLevel >= 175 and MyLevel <= 189) or SelectMonster == "Dark Master" then
-                Mon = "Dark Master"
-                LevelQuest = 2
-                NameQuest = "SkyQuest"
-                NameMon = "Dark Master"
-                CFrameQuest = CFrame.new(-4839.53027, 716.368591, -2619.44165, 0.866007268, 0, 0.500031412, 0, 1, 0, -0.500031412, 0, 0.866007268)
-                CFrameMon = CFrame.new(-5259.8447265625, 391.3976745605469, -2229.035400390625)
-            elseif (MyLevel >= 190 and MyLevel <= 209) or SelectMonster == "Prisoner" then
-                Mon = "Prisoner"
-                LevelQuest = 1
-                NameQuest = "PrisonerQuest"
-                NameMon = "Prisoner"
-                CFrameQuest = CFrame.new(5308.93115, 1.65517521, 475.120514, -0.0894274712, -5.00292918e-09, -0.995993316, 1.60817859e-09, 1, -5.16744869e-09, 0.995993316, -2.06384709e-09, -0.0894274712)
-                CFrameMon = CFrame.new(5098.9736328125, -0.3204058110713959, 474.2373352050781)
-            elseif (MyLevel >= 210 and MyLevel <= 249) or SelectMonster == "Dangerous Prisone" then
-                Mon = "Dangerous Prisoner"
-                LevelQuest = 2
-                NameQuest = "PrisonerQuest"
-                NameMon = "Dangerous Prisoner"
-                CFrameQuest = CFrame.new(5308.93115, 1.65517521, 475.120514, -0.0894274712, -5.00292918e-09, -0.995993316, 1.60817859e-09, 1, -5.16744869e-09, 0.995993316, -2.06384709e-09, -0.0894274712)
-                CFrameMon = CFrame.new(5654.5634765625, 15.633401870727539, 866.2991943359375)
-            elseif (MyLevel >= 250 and MyLevel <= 274) or SelectMonster == "Toga Warrior" then
-                Mon = "Toga Warrior"
-                LevelQuest = 1
-                NameQuest = "ColosseumQuest"
-                NameMon = "Toga Warrior"
-                CFrameQuest = CFrame.new(-1580.04663, 6.35000277, -2986.47534, -0.515037298, 0, -0.857167721, 0, 1, 0, 0.857167721, 0, -0.515037298)
-                CFrameMon = CFrame.new(-1820.21484375, 51.68385696411133, -2740.6650390625)
-            elseif (MyLevel >= 275 and MyLevel <= 299) or SelectMonster == "Gladiator" then
-                Mon = "Gladiator"
-                LevelQuest = 2
-                NameQuest = "ColosseumQuest"
-                NameMon = "Gladiator"
-                CFrameQuest = CFrame.new(-1580.04663, 6.35000277, -2986.47534, -0.515037298, 0, -0.857167721, 0, 1, 0, 0.857167721, 0, -0.515037298)
-                CFrameMon = CFrame.new(-1292.838134765625, 56.380882263183594, -3339.031494140625)
-            elseif (MyLevel >= 300 and MyLevel <= 324) or SelectMonster == "Military Soldier" then
-                Mon = "Military Soldier"
-                LevelQuest = 1
-                NameQuest = "MagmaQuest"
-                NameMon = "Military Soldier"
-                CFrameQuest = CFrame.new(-5313.37012, 10.9500084, 8515.29395, -0.499959469, 0, 0.866048813, 0, 1, 0, -0.866048813, 0, -0.499959469)
-                CFrameMon = CFrame.new(-5411.16455078125, 11.081554412841797, 8454.29296875)
-            elseif (MyLevel >= 325 and MyLevel <= 374) or SelectMonster == "Military Spy" then
-                Mon = "Military Spy"
-                LevelQuest = 2
-                NameQuest = "MagmaQuest"
-                NameMon = "Military Spy"
-                CFrameQuest = CFrame.new(-5313.37012, 10.9500084, 8515.29395, -0.499959469, 0, 0.866048813, 0, 1, 0, -0.866048813, 0, -0.499959469)
-                CFrameMon = CFrame.new(-5802.8681640625, 86.26241302490234, 8828.859375)
-            elseif (MyLevel >= 375 and MyLevel <= 399) or SelectMonster == "Fishman Warrior" then
-                Mon = "Fishman Warrior"
-                LevelQuest = 1
-                NameQuest = "FishmanQuest"
-                NameMon = "Fishman Warrior"
-                CFrameQuest = CFrame.new(61122.65234375, 18.497442245483, 1569.3997802734)
-                CFrameMon = CFrame.new(60878.30078125, 18.482830047607422, 1543.7574462890625)
-                if _G.AutoFarm and (CFrameQuest.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude > 10000 then
-                    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("requestEntrance",Vector3.new(61163.8515625, 11.6796875, 1819.7841796875))
-                end
-            elseif (MyLevel >= 400 and MyLevel <= 449) or SelectMonster == "Fishman Commando" then
-                Mon = "Fishman Commando"
-                LevelQuest = 2
-                NameQuest = "FishmanQuest"
-                NameMon = "Fishman Commando"
-                CFrameQuest = CFrame.new(61122.65234375, 18.497442245483, 1569.3997802734)
-                CFrameMon = CFrame.new(61922.6328125, 18.482830047607422, 1493.934326171875)
-                if _G.AutoFarm and (CFrameQuest.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude > 10000 then
-                    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("requestEntrance",Vector3.new(61163.8515625, 11.6796875, 1819.7841796875))
-                end
-            elseif (MyLevel >= 450 and MyLevel <= 474) or SelectMonster == "God's Guard" then
-                Mon = "God's Guard"
-                LevelQuest = 1
-                NameQuest = "SkyExp1Quest"
-                NameMon = "God's Guard"
-                CFrameQuest = CFrame.new(-4721.88867, 843.874695, -1949.96643, 0.996191859, -0, -0.0871884301, 0, 1, -0, 0.0871884301, 0, 0.996191859)
-                CFrameMon = CFrame.new(-4710.04296875, 845.2769775390625, -1927.3079833984375)
-                if _G.AutoFarm and (CFrameQuest.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude > 10000 then
-                    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("requestEntrance",Vector3.new(-4607.82275, 872.54248, -1667.55688))
-                end
-            elseif (MyLevel >= 475 and MyLevel <= 524) or SelectMonster == "Shanda" then
-                Mon = "Shanda"
-                LevelQuest = 2
-                NameQuest = "SkyExp1Quest"
-                NameMon = "Shanda"
-                CFrameQuest = CFrame.new(-7859.09814, 5544.19043, -381.476196, -0.422592998, 0, 0.906319618, 0, 1, 0, -0.906319618, 0, -0.422592998)
-                CFrameMon = CFrame.new(-7678.48974609375, 5566.40380859375, -497.2156066894531)
-                if _G.AutoFarm and (CFrameQuest.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude > 10000 then
-                    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("requestEntrance",Vector3.new(-7894.6176757813, 5547.1416015625, -380.29119873047))
-                end
-            elseif (MyLevel >= 525 and MyLevel <= 549) or SelectMonster == "Royal Squad" then
-                Mon = "Royal Squad"
-                LevelQuest = 1
-                NameQuest = "SkyExp2Quest"
-                NameMon = "Royal Squad"
-                CFrameQuest = CFrame.new(-7906.81592, 5634.6626, -1411.99194, 0, 0, -1, 0, 1, 0, 1, 0, 0)
-                CFrameMon = CFrame.new(-7624.25244140625, 5658.13330078125, -1467.354248046875)
-            elseif (MyLevel >= 550 and MyLevel <= 624) or SelectMonster == "Royal Soldier" then
-                Mon = "Royal Soldier"
-                LevelQuest = 2
-                NameQuest = "SkyExp2Quest"
-                NameMon = "Royal Soldier"
-                CFrameQuest = CFrame.new(-7906.81592, 5634.6626, -1411.99194, 0, 0, -1, 0, 1, 0, 1, 0, 0)
-                CFrameMon = CFrame.new(-7836.75341796875, 5645.6640625, -1790.6236572265625)
-            elseif (MyLevel >= 625 and MyLevel <= 649) or SelectMonster == "Galley Pirate" then
-                Mon = "Galley Pirate"
-                LevelQuest = 1
-                NameQuest = "FountainQuest"
-                NameMon = "Galley Pirate"
-                CFrameQuest = CFrame.new(5259.81982, 37.3500175, 4050.0293, 0.087131381, 0, 0.996196866, 0, 1, 0, -0.996196866, 0, 0.087131381)
-                CFrameMon = CFrame.new(5551.02197265625, 78.90135192871094, 3930.412841796875)
-            elseif MyLevel >= 650 or SelectMonster == "Galley Captain" then
-                Mon = "Galley Captain"
-                LevelQuest = 2
-                NameQuest = "FountainQuest"
-                NameMon = "Galley Captain"
-                CFrameQuest = CFrame.new(5259.81982, 37.3500175, 4050.0293, 0.087131381, 0, 0.996196866, 0, 1, 0, -0.996196866, 0, 0.087131381)
-                CFrameMon = CFrame.new(5441.95166015625, 42.50205993652344, 4950.09375)
-            end
-           elseif World2 then
-            if (MyLevel >= 700 and MyLevel <= 724) or SelectMonster == "Raider" then
-                Mon = "Raider"
-                LevelQuest = 1
-                NameQuest = "Area1Quest"
-                NameMon = "Raider"
-                CFrameQuest = CFrame.new(-429.543518, 71.7699966, 1836.18188, -0.22495985, 0, -0.974368095, 0, 1, 0, 0.974368095, 0, -0.22495985)
-                CFrameMon = CFrame.new(-728.3267211914062, 52.779319763183594, 2345.7705078125)
-            elseif (MyLevel >= 725 and MyLevel <= 774) or SelectMonster == "Mercenary" then
-                Mon = "Mercenary"
-                LevelQuest = 2
-                NameQuest = "Area1Quest"
-                NameMon = "Mercenary"
-                CFrameQuest = CFrame.new(-429.543518, 71.7699966, 1836.18188, -0.22495985, 0, -0.974368095, 0, 1, 0, 0.974368095, 0, -0.22495985)
-                CFrameMon = CFrame.new(-1004.3244018554688, 80.15886688232422, 1424.619384765625)
-            elseif (MyLevel >= 775 and MyLevel <= 799) or SelectMonster == "Swan Pirate" then
-                Mon = "Swan Pirate"
-                LevelQuest = 1
-                NameQuest = "Area2Quest"
-                NameMon = "Swan Pirate"
-                CFrameQuest = CFrame.new(638.43811, 71.769989, 918.282898, 0.139203906, 0, 0.99026376, 0, 1, 0, -0.99026376, 0, 0.139203906)
-                CFrameMon = CFrame.new(1068.664306640625, 137.61428833007812, 1322.1060791015625)
-            elseif (MyLevel >= 800 and MyLevel <= 874) or SelectMonster == "Factory Staff" then
-                Mon = "Factory Staff"
-                NameQuest = "Area2Quest"
-                LevelQuest = 2
-                NameMon = "Factory Staff"
-                CFrameQuest = CFrame.new(632.698608, 73.1055908, 918.666321, -0.0319722369, 8.96074881e-10, -0.999488771, 1.36326533e-10, 1, 8.92172336e-10, 0.999488771, -1.07732087e-10, -0.0319722369)
-                CFrameMon = CFrame.new(73.07867431640625, 81.86344146728516, -27.470672607421875)
-            elseif (MyLevel >= 875 and MyLevel <= 899) or SelectMonster == "Marine Lieutenant" then           
-                Mon = "Marine Lieutenant"
-                LevelQuest = 1
-                NameQuest = "MarineQuest3"
-                NameMon = "Marine Lieutenant"
-                CFrameQuest = CFrame.new(-2440.79639, 71.7140732, -3216.06812, 0.866007268, 0, 0.500031412, 0, 1, 0, -0.500031412, 0, 0.866007268)
-                CFrameMon = CFrame.new(-2821.372314453125, 75.89727783203125, -3070.089111328125)
-            elseif (MyLevel >= 900 and MyLevel <= 949) or SelectMonster == "Marine Captain" then
-                Mon = "Marine Captain"
-                LevelQuest = 2
-                NameQuest = "MarineQuest3"
-                NameMon = "Marine Captain"
-                CFrameQuest = CFrame.new(-2440.79639, 71.7140732, -3216.06812, 0.866007268, 0, 0.500031412, 0, 1, 0, -0.500031412, 0, 0.866007268)
-                CFrameMon = CFrame.new(-1861.2310791015625, 80.17658233642578, -3254.697509765625)
-            elseif (MyLevel >= 950 and MyLevel <= 974) or SelectMonster == "Zombie" then
-                Mon = "Zombie"
-                LevelQuest = 1
-                NameQuest = "ZombieQuest"
-                NameMon = "Zombie"
-                CFrameQuest = CFrame.new(-5497.06152, 47.5923004, -795.237061, -0.29242146, 0, -0.95628953, 0, 1, 0, 0.95628953, 0, -0.29242146)
-                CFrameMon = CFrame.new(-5657.77685546875, 78.96973419189453, -928.68701171875)
-            elseif (MyLevel >= 975 and MyLevel <= 999) or SelectMonster == "Vampire" then
-                Mon = "Vampire"
-                LevelQuest = 2
-                NameQuest = "ZombieQuest"
-                NameMon = "Vampire"
-                CFrameQuest = CFrame.new(-5497.06152, 47.5923004, -795.237061, -0.29242146, 0, -0.95628953, 0, 1, 0, 0.95628953, 0, -0.29242146)
-                CFrameMon = CFrame.new(-6037.66796875, 32.18463897705078, -1340.6597900390625)
-            elseif (MyLevel >= 1000 and MyLevel <= 1049) or SelectMonster == "Snow Trooper" then
-                Mon = "Snow Trooper"
-                LevelQuest = 1
-                NameQuest = "SnowMountainQuest"
-                NameMon = "Snow Trooper"
-                CFrameQuest = CFrame.new(609.858826, 400.119904, -5372.25928, -0.374604106, 0, 0.92718488, 0, 1, 0, -0.92718488, 0, -0.374604106)
-                CFrameMon = CFrame.new(549.1473388671875, 427.3870544433594, -5563.69873046875)
-            elseif (MyLevel >= 1050 and MyLevel <= 1099) or SelectMonster == "Winter Warrior" then
-                Mon = "Winter Warrior"
-                LevelQuest = 2
-                NameQuest = "SnowMountainQuest"
-                NameMon = "Winter Warrior"
-                CFrameQuest = CFrame.new(609.858826, 400.119904, -5372.25928, -0.374604106, 0, 0.92718488, 0, 1, 0, -0.92718488, 0, -0.374604106)
-                CFrameMon = CFrame.new(1142.7451171875, 475.6398010253906, -5199.41650390625)
-            elseif (MyLevel >= 1100 and MyLevel <= 1124) or SelectMonster == "Lab Subordinate" then
-                Mon = "Lab Subordinate"
-                LevelQuest = 1
-                NameQuest = "IceSideQuest"
-                NameMon = "Lab Subordinate"
-                CFrameQuest = CFrame.new(-6064.06885, 15.2422857, -4902.97852, 0.453972578, -0, -0.891015649, 0, 1, -0, 0.891015649, 0, 0.453972578)
-                CFrameMon = CFrame.new(-5707.4716796875, 15.951709747314453, -4513.39208984375)
-            elseif (MyLevel >= 1125 and MyLevel <= 1174) or SelectMonster == "Horned Warrior" then
-                Mon = "Horned Warrior"
-                LevelQuest = 2
-                NameQuest = "IceSideQuest"
-                NameMon = "Horned Warrior"
-                CFrameQuest = CFrame.new(-6064.06885, 15.2422857, -4902.97852, 0.453972578, -0, -0.891015649, 0, 1, -0, 0.891015649, 0, 0.453972578)
-                CFrameMon = CFrame.new(-6341.36669921875, 15.951770782470703, -5723.162109375)
-            elseif (MyLevel >= 1175 and MyLevel <= 1199) or SelectMonster == "Magma Ninja" then
-                Mon = "Magma Ninja"
-                LevelQuest = 1
-                NameQuest = "FireSideQuest"
-                NameMon = "Magma Ninja"
-                CFrameQuest = CFrame.new(-5428.03174, 15.0622921, -5299.43457, -0.882952213, 0, 0.469463557, 0, 1, 0, -0.469463557, 0, -0.882952213)
-                CFrameMon = CFrame.new(-5449.6728515625, 76.65874481201172, -5808.20068359375)
-            elseif (MyLevel >= 1200 and MyLevel <= 1249) or SelectMonster == "Lava Pirate" then
-                Mon = "Lava Pirate"
-                LevelQuest = 2
-                NameQuest = "FireSideQuest"
-                NameMon = "Lava Pirate"
-                CFrameQuest = CFrame.new(-5428.03174, 15.0622921, -5299.43457, -0.882952213, 0, 0.469463557, 0, 1, 0, -0.469463557, 0, -0.882952213)
-                CFrameMon = CFrame.new(-5213.33154296875, 49.73788070678711, -4701.451171875)
-            elseif (MyLevel >= 1250 and MyLevel <= 1274) or SelectMonster == "Ship Deckhand" then
-                Mon = "Ship Deckhand"
-                LevelQuest = 1
-                NameQuest = "ShipQuest1"
-                NameMon = "Ship Deckhand"
-                CFrameQuest = CFrame.new(1037.80127, 125.092171, 32911.6016)         
-                CFrameMon = CFrame.new(1212.0111083984375, 150.79205322265625, 33059.24609375)    
-                if _G.AutoFarm and (CFrameQuest.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude > 10000 then
-                    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("requestEntrance",Vector3.new(923.21252441406, 126.9760055542, 32852.83203125))
-                end
-            elseif (MyLevel >= 1275 and MyLevel <= 1299) or SelectMonster == "Ship Engineer" then
-                Mon = "Ship Engineer"
-                LevelQuest = 2
-                NameQuest = "ShipQuest1"
-                NameMon = "Ship Engineer"
-                CFrameQuest = CFrame.new(1037.80127, 125.092171, 32911.6016)   
-                CFrameMon = CFrame.new(919.4786376953125, 43.54401397705078, 32779.96875)   
-                if _G.AutoFarm and (CFrameQuest.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude > 10000 then
-                    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("requestEntrance",Vector3.new(923.21252441406, 126.9760055542, 32852.83203125))
-                end             
-            elseif (MyLevel >= 1300 and MyLevel <= 1324) or SelectMonster == "Ship Steward" then
-                Mon = "Ship Steward"
-                LevelQuest = 1
-                NameQuest = "ShipQuest2"
-                NameMon = "Ship Steward"
-                CFrameQuest = CFrame.new(968.80957, 125.092171, 33244.125)         
-                CFrameMon = CFrame.new(919.4385375976562, 129.55599975585938, 33436.03515625)      
-                if _G.AutoFarm and (CFrameQuest.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude > 10000 then
-                    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("requestEntrance",Vector3.new(923.21252441406, 126.9760055542, 32852.83203125))
-                end
-            elseif (MyLevel >= 1325 and MyLevel <= 1349) or SelectMonster == "Ship Officer" then
-                Mon = "Ship Officer"
-                LevelQuest = 2
-                NameQuest = "ShipQuest2"
-                NameMon = "Ship Officer"
-                CFrameQuest = CFrame.new(968.80957, 125.092171, 33244.125)
-                CFrameMon = CFrame.new(1036.0179443359375, 181.4390411376953, 33315.7265625)
-                if _G.AutoFarm and (CFrameQuest.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude > 10000 then
-                    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("requestEntrance",Vector3.new(923.21252441406, 126.9760055542, 32852.83203125))
-                end
-            elseif (MyLevel >= 1350 and MyLevel <= 1374) or SelectMonster == "Arctic Warrior" then
-                Mon = "Arctic Warrior"
-                LevelQuest = 1
-                NameQuest = "FrostQuest"
-                NameMon = "Arctic Warrior"
-                CFrameQuest = CFrame.new(5667.6582, 26.7997818, -6486.08984, -0.933587909, 0, -0.358349502, 0, 1, 0, 0.358349502, 0, -0.933587909)
-                CFrameMon = CFrame.new(5966.24609375, 62.97002029418945, -6179.3828125)
-                if _G.AutoFarm and (CFrameQuest.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude > 10000 then
-                    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("requestEntrance",Vector3.new(-6508.5581054688, 5000.034996032715, -132.83953857422))
-                end
-            elseif (MyLevel >= 1375 and MyLevel <= 1424) or SelectMonster == "Snow Lurker" then
-                Mon = "Snow Lurker"
-                LevelQuest = 2
-                NameQuest = "FrostQuest"
-                NameMon = "Snow Lurker"
-                CFrameQuest = CFrame.new(5667.6582, 26.7997818, -6486.08984, -0.933587909, 0, -0.358349502, 0, 1, 0, 0.358349502, 0, -0.933587909)
-                CFrameMon = CFrame.new(5407.07373046875, 69.19437408447266, -6880.88037109375)
-            elseif (MyLevel >= 1425 and MyLevel <= 1449) or SelectMonster == "Sea Soldier" then
-                Mon = "Sea Soldier"
-                LevelQuest = 1
-                NameQuest = "ForgottenQuest"
-                NameMon = "Sea Soldier"
-                CFrameQuest = CFrame.new(-3054.44458, 235.544281, -10142.8193, 0.990270376, -0, -0.13915664, 0, 1, -0, 0.13915664, 0, 0.990270376)
-                CFrameMon = CFrame.new(-3028.2236328125, 64.67451477050781, -9775.4267578125)
-            elseif MyLevel >= 1450 or SelectMonster == "Water Fighter" then
-                Mon = "Water Fighter"
-                LevelQuest = 2
-                NameQuest = "ForgottenQuest"
-                NameMon = "Water Fighter"
-                CFrameQuest = CFrame.new(-3054.44458, 235.544281, -10142.8193, 0.990270376, -0, -0.13915664, 0, 1, -0, 0.13915664, 0, 0.990270376)
-                CFrameMon = CFrame.new(-3352.9013671875, 285.01556396484375, -10534.841796875)
-            end
-                elseif World3 then
-           if (MyLevel >= 1500 and MyLevel <= 1524) or SelectMonster == "Pirate Millionaire" then
-                Mon = "Pirate Millionaire"
-                LevelQuest = 1
-                NameQuest = "PiratePortQuest"
-                NameMon = "Pirate Millionaire"
-                CFrameQuest = CFrame.new(-450.104645, 107.681458, 5950.72607, 0.957107544, -0, -0.289732844, 0, 1, -0, 0.289732844, 0, 0.957107544)
-                CFrameMon = CFrame.new(-245.9963836669922, 47.30615234375, 5584.1005859375)
-            elseif (MyLevel >= 1525 and MyLevel <= 1574) or SelectMonster == "Pistol Billionaire" then
-                Mon = "Pistol Billionaire"
-                LevelQuest = 2
-                NameQuest = "PiratePortQuest"
-                NameMon = "Pistol Billionaire"
-                CFrameQuest = CFrame.new(-450.104645, 107.681458, 5950.72607, 0.957107544, -0, -0.289732844, 0, 1, -0, 0.289732844, 0, 0.957107544)
-                CFrameMon = CFrame.new(-54.8110352, 83.7698746, 5947.84082, -0.965929747, 0, 0.258804798, 0, 1, 0, -0.258804798, 0, -0.965929747)
-            elseif (MyLevel >= 1575 and MyLevel <= 1599) or SelectMonster == "Dragon Crew Warrior" then
-                Mon = "Dragon Crew Warrior"
-                LevelQuest = 1
-                NameQuest = "DragonCrewQuest"
-                NameMon = "Dragon Crew Warrior"
-                CFrameQuest = CFrame.new(6750.4931640625, 127.44916534423828, -711.0308837890625)
-                CFrameMon = CFrame.new(6709.76367, 52.3442993, -1139.02966, -0.763515472, 0, 0.645789504, 0, 1, 0, -0.645789504, 0, -0.763515472)          
-            elseif (MyLevel >= 1600 and MyLevel <= 1624) or SelectMonster == "Dragon Crew Archer" then
-                Mon = "Dragon Crew Archer"
-                NameQuest = "DragonCrewQuest"
-                LevelQuest = 2
-                NameMon = "Dragon Crew Archer"
-                CFrameQuest = CFrame.new(6750.4931640625, 127.44916534423828, -711.0308837890625)
-                CFrameMon = CFrame.new(6668.76172, 481.376923, 329.12207, -0.121787429, 0, -0.992556155, 0, 1, 0, 0.992556155, 0, -0.121787429)
-            elseif (MyLevel >= 1625 and MyLevel <= 1649) or SelectMonster == "Hydra Enforcer" then
-                Mon = "Hydra Enforcer"
-                NameQuest = "VenomCrewQuest"
-                LevelQuest = 1
-                NameMon = "Hydra Enforcer"
-                CFrameQuest = CFrame.new(5206.40185546875, 1004.10498046875, 748.3504638671875)
-                CFrameMon = CFrame.new(4547.11523, 1003.10217, 334.194824, 0.388810456, -0, -0.921317935, 0, 1, -0, 0.921317935, 0, 0.388810456)
-            elseif (MyLevel >= 1650 and MyLevel <= 1699) or SelectMonster == "Venomous Assailant" then
-                Mon = "Venomous Assailant"
-                NameQuest = "VenomCrewQuest"
-                LevelQuest = 2
-                NameMon = "Venomous Assailant"
-                CFrameQuest = CFrame.new(5206.40185546875, 1004.10498046875, 748.3504638671875)
-                CFrameMon = CFrame.new(4674.92676, 1134.82654, 996.308838, 0.731321394, -0, -0.682033002, 0, 1, -0, 0.682033002, 0, 0.731321394)
-            elseif (MyLevel >= 1700 and MyLevel <= 1724) or SelectMonster == "Marine Commodore" then
-                Mon = "Marine Commodore"
-                LevelQuest = 1
-                NameQuest = "MarineTreeIsland"
-                NameMon = "Marine Commodore"
-                CFrameQuest = CFrame.new(2481.09228515625, 74.27049255371094, -6779.640625)
-                CFrameMon = CFrame.new(2577.25391, 75.6100006, -7739.87207, 0.499959469, 0, 0.866048813, 0, 1, 0, -0.866048813, 0, 0.499959469)
-            elseif (MyLevel >= 1725 and MyLevel <= 1774) or SelectMonster == "Marine Rear Admiral" then
-                Mon = "Marine Rear Admiral"
-                LevelQuest = 2
-                NameQuest = "MarineTreeIsland"
-                NameMon = "Marine Rear Admiral"
-                CFrameQuest = CFrame.new(2481.09228515625, 74.27049255371094, -6779.640625)
-                CFrameMon = CFrame.new(3761.81006, 123.912003, -6823.52197, 0.961273968, 0, 0.275594592, 0, 1, 0, -0.275594592, 0, 0.961273968)
-            elseif (MyLevel >= 1775 and MyLevel <= 1799) or SelectMonster == "Fishman Raider" then
-                Mon = "Fishman Raider"
-                LevelQuest = 1
-                NameQuest = "DeepForestIsland3"
-                NameMon = "Fishman Raider"
-                CFrameQuest = CFrame.new(-10581.6563, 330.872955, -8761.18652, -0.882952213, 0, 0.469463557, 0, 1, 0, -0.469463557, 0, -0.882952213)   
-                CFrameMon = CFrame.new(-10407.5263671875, 331.76263427734375, -8368.5166015625)
-            elseif (MyLevel >= 1800 and MyLevel <= 1824) or SelectMonster == "Fishman Captain" then
-                Mon = "Fishman Captain"
-                LevelQuest = 2
-                NameQuest = "DeepForestIsland3"
-                NameMon = "Fishman Captain"
-                CFrameQuest = CFrame.new(-10581.6563, 330.872955, -8761.18652, -0.882952213, 0, 0.469463557, 0, 1, 0, -0.469463557, 0, -0.882952213)   
-                CFrameMon = CFrame.new(-10994.701171875, 352.38140869140625, -9002.1103515625) 
-            elseif (MyLevel >= 1825 and MyLevel <= 1849) or SelectMonster == "Forest Pirate" then
-                Mon = "Forest Pirate"
-                LevelQuest = 1
-                NameQuest = "DeepForestIsland"
-                NameMon = "Forest Pirate"
-                CFrameQuest = CFrame.new(-13234.04, 331.488495, -7625.40137, 0.707134247, -0, -0.707079291, 0, 1, -0, 0.707079291, 0, 0.707134247)
-                CFrameMon = CFrame.new(-13274.478515625, 332.3781433105469, -7769.58056640625)
-            elseif (MyLevel >= 1850 and MyLevel <= 1899) or SelectMonster == "Mythological Pirate" then
-                Mon = "Mythological Pirate"
-                LevelQuest = 2
-                NameQuest = "DeepForestIsland"
-                NameMon = "Mythological Pirate"
-                CFrameQuest = CFrame.new(-13234.04, 331.488495, -7625.40137, 0.707134247, -0, -0.707079291, 0, 1, -0, 0.707079291, 0, 0.707134247)   
-                CFrameMon = CFrame.new(-13680.607421875, 501.08154296875, -6991.189453125)
-            elseif (MyLevel >= 1900 and MyLevel <= 1924) or SelectMonster == "Jungle Pirate" then
-                Mon = "Jungle Pirate"
-                LevelQuest = 1
-                NameQuest = "DeepForestIsland2"
-                NameMon = "Jungle Pirate"
-                CFrameQuest = CFrame.new(-12680.3818, 389.971039, -9902.01953, -0.0871315002, 0, 0.996196866, 0, 1, 0, -0.996196866, 0, -0.0871315002)
-                CFrameMon = CFrame.new(-12256.16015625, 331.73828125, -10485.8369140625)
-            elseif (MyLevel >= 1925 and MyLevel <= 1974) or SelectMonster == "Musketeer Pirate" then
-                Mon = "Musketeer Pirate"
-                LevelQuest = 2
-                NameQuest = "DeepForestIsland2"
-                NameMon = "Musketeer Pirate"
-                CFrameQuest = CFrame.new(-12680.3818, 389.971039, -9902.01953, -0.0871315002, 0, 0.996196866, 0, 1, 0, -0.996196866, 0, -0.0871315002)
-                CFrameMon = CFrame.new(-13457.904296875, 391.545654296875, -9859.177734375)
-            elseif (MyLevel >= 1975 and MyLevel <= 1999) or SelectMonster == "Reborn Skeleton" then
-                Mon = "Reborn Skeleton"
-                LevelQuest = 1
-                NameQuest = "HauntedQuest1"
-                NameMon = "Reborn Skeleton"
-                CFrameQuest = CFrame.new(-9479.2168, 141.215088, 5566.09277, 0, 0, 1, 0, 1, -0, -1, 0, 0)
-                CFrameMon = CFrame.new(-8763.7236328125, 165.72299194335938, 6159.86181640625)
-            elseif (MyLevel >= 2000 and MyLevel <= 2024) or SelectMonster == "Living Zombie" then
-                Mon = "Living Zombie"
-                LevelQuest = 2
-                NameQuest = "HauntedQuest1"
-                NameMon = "Living Zombie"
-                CFrameQuest = CFrame.new(-9479.2168, 141.215088, 5566.09277, 0, 0, 1, 0, 1, -0, -1, 0, 0)
-                CFrameMon = CFrame.new(-10144.1318359375, 138.62667846679688, 5838.0888671875)
-            elseif (MyLevel >= 2025 and MyLevel <= 2049) or SelectMonster == "Demonic Soul" then
-                Mon = "Demonic Soul"
-                LevelQuest = 1
-                NameQuest = "HauntedQuest2"
-                NameMon = "Demonic Soul"
-                CFrameQuest = CFrame.new(-9516.99316, 172.017181, 6078.46533, 0, 0, -1, 0, 1, 0, 1, 0, 0) 
-                CFrameMon = CFrame.new(-9505.8720703125, 172.10482788085938, 6158.9931640625)
-            elseif (MyLevel >= 2050 and MyLevel <= 2074) or SelectMonster == "Posessed Mummy" then
-                Mon = "Posessed Mummy"
-                LevelQuest = 2
-                NameQuest = "HauntedQuest2"
-                NameMon = "Posessed Mummy"
-                CFrameQuest = CFrame.new(-9516.99316, 172.017181, 6078.46533, 0, 0, -1, 0, 1, 0, 1, 0, 0)
-                CFrameMon = CFrame.new(-9582.0224609375, 6.251527309417725, 6205.478515625)
-            elseif (MyLevel >= 2075 and MyLevel <= 2099) or SelectMonster == "Peanut Scout" then
-                Mon = "Peanut Scout"
-                LevelQuest = 1
-                NameQuest = "NutsIslandQuest"
-                NameMon = "Peanut Scout"
-                CFrameQuest = CFrame.new(-2104.3908691406, 38.104167938232, -10194.21875, 0, 0, -1, 0, 1, 0, 1, 0, 0)
-                CFrameMon = CFrame.new(-2143.241943359375, 47.72198486328125, -10029.9951171875)
-            elseif (MyLevel >= 2100 and MyLevel <= 2124) or SelectMonster == "Peanut President" then
-                Mon = "Peanut President"
-                LevelQuest = 2
-                NameQuest = "NutsIslandQuest"
-                NameMon = "Peanut President"
-                CFrameQuest = CFrame.new(-2104.3908691406, 38.104167938232, -10194.21875, 0, 0, -1, 0, 1, 0, 1, 0, 0)
-                CFrameMon = CFrame.new(-1859.35400390625, 38.10316848754883, -10422.4296875)
-            elseif (MyLevel >= 2125 and MyLevel <= 2149) or SelectMonster == "Ice Cream Chef" then
-                Mon = "Ice Cream Chef"
-                LevelQuest = 1
-                NameQuest = "IceCreamIslandQuest"
-                NameMon = "Ice Cream Chef"
-                CFrameQuest = CFrame.new(-820.64825439453, 65.819526672363, -10965.795898438, 0, 0, -1, 0, 1, 0, 1, 0, 0)
-                CFrameMon = CFrame.new(-872.24658203125, 65.81957244873047, -10919.95703125)
-            elseif (MyLevel >= 2150 and MyLevel <= 2199) or SelectMonster == "Ice Cream Commander" then
-                Mon = "Ice Cream Commander"
-                LevelQuest = 2
-                NameQuest = "IceCreamIslandQuest"
-                NameMon = "Ice Cream Commander"
-                CFrameQuest = CFrame.new(-820.64825439453, 65.819526672363, -10965.795898438, 0, 0, -1, 0, 1, 0, 1, 0, 0)
-                CFrameMon = CFrame.new(-558.06103515625, 112.04895782470703, -11290.7744140625)
-            elseif (MyLevel >= 2200 and MyLevel <= 2224) or SelectMonster == "Cookie Crafter" then
-                Mon = "Cookie Crafter"
-                LevelQuest = 1
-                NameQuest = "CakeQuest1"
-                NameMon = "Cookie Crafter"
-                CFrameQuest = CFrame.new(-2021.32007, 37.7982254, -12028.7295, 0.957576931, -8.80302053e-08, 0.288177818, 6.9301187e-08, 1, 7.51931211e-08, -0.288177818, -5.2032135e-08, 0.957576931)
-                CFrameMon = CFrame.new(-2374.13671875, 37.79826354980469, -12125.30859375)
-            elseif (MyLevel >= 2225 and MyLevel <= 2249) or SelectMonster == "Cake Guard" then
-                Mon = "Cake Guard"
-                LevelQuest = 2
-                NameQuest = "CakeQuest1"
-                NameMon = "Cake Guard"
-                CFrameQuest = CFrame.new(-2021.32007, 37.7982254, -12028.7295, 0.957576931, -8.80302053e-08, 0.288177818, 6.9301187e-08, 1, 7.51931211e-08, -0.288177818, -5.2032135e-08, 0.957576931)
-                CFrameMon = CFrame.new(-1598.3070068359375, 43.773197174072266, -12244.5810546875)
-            elseif (MyLevel >= 2250 and MyLevel <= 2274) or SelectMonster == "Baking Staff" then
-                Mon = "Baking Staff"
-                LevelQuest = 1
-                NameQuest = "CakeQuest2"
-                NameMon = "Baking Staff"
-                CFrameQuest = CFrame.new(-1927.91602, 37.7981339, -12842.5391, -0.96804446, 4.22142143e-08, 0.250778586, 4.74911062e-08, 1, 1.49904711e-08, -0.250778586, 2.64211941e-08, -0.96804446)
-                CFrameMon = CFrame.new(-1887.8099365234375, 77.6185073852539, -12998.3505859375)
-            elseif (MyLevel >= 2275 and MyLevel <= 2299) or SelectMonster == "Head Baker" then
-                Mon = "Head Baker"
-                LevelQuest = 2
-                NameQuest = "CakeQuest2"
-                NameMon = "Head Baker"
-                CFrameQuest = CFrame.new(-1927.91602, 37.7981339, -12842.5391, -0.96804446, 4.22142143e-08, 0.250778586, 4.74911062e-08, 1, 1.49904711e-08, -0.250778586, 2.64211941e-08, -0.96804446)
-                CFrameMon = CFrame.new(-2216.188232421875, 82.884521484375, -12869.2939453125)
-            elseif (MyLevel >= 2300 and MyLevel <= 2324) or SelectMonster == "Cocoa Warrior" then
-                Mon = "Cocoa Warrior"
-                LevelQuest = 1
-                NameQuest = "ChocQuest1"
-                NameMon = "Cocoa Warrior"
-                CFrameQuest = CFrame.new(233.22836303710938, 29.876001358032227, -12201.2333984375)
-                CFrameMon = CFrame.new(-21.55328369140625, 80.57499694824219, -12352.3876953125)
-            elseif (MyLevel >= 2325 and MyLevel <= 2349) or SelectMonster == "Chocolate Bar Battler" then
-                Mon = "Chocolate Bar Battler"
-                LevelQuest = 2
-                NameQuest = "ChocQuest1"
-                NameMon = "Chocolate Bar Battler"
-                CFrameQuest = CFrame.new(233.22836303710938, 29.876001358032227, -12201.2333984375)
-                CFrameMon = CFrame.new(582.590576171875, 77.18809509277344, -12463.162109375)
-            elseif (MyLevel >= 2350 and MyLevel <= 2374) or SelectMonster == "Sweet Thief" then
-                Mon = "Sweet Thief"
-                LevelQuest = 1
-                NameQuest = "ChocQuest2"
-                NameMon = "Sweet Thief"
-                CFrameQuest = CFrame.new(150.5066375732422, 30.693693161010742, -12774.5029296875)
-                CFrameMon = CFrame.new(165.1884765625, 76.05885314941406, -12600.8369140625)
-            elseif (MyLevel >= 2375 and MyLevel <= 2399) or SelectMonster == "Candy Rebel" then
-                Mon = "Candy Rebel"
-                LevelQuest = 2
-                NameQuest = "ChocQuest2"
-                NameMon = "Candy Rebel"
-                CFrameQuest = CFrame.new(150.5066375732422, 30.693693161010742, -12774.5029296875)
-                CFrameMon = CFrame.new(134.86563110351562, 77.2476806640625, -12876.5478515625)
-            elseif (MyLevel >= 2400 and MyLevel <= 2424) or SelectMonster == "Candy Pirate" then
-                Mon = "Candy Pirate"
-                LevelQuest = 1
-                NameQuest = "CandyQuest1"
-                NameMon = "Candy Pirate"
-                CFrameQuest = CFrame.new(-1150.0400390625, 20.378934860229492, -14446.3349609375)
-                CFrameMon = CFrame.new(-1310.5003662109375, 26.016523361206055, -14562.404296875)
-            elseif (MyLevel >= 2425 and MyLevel <= 2449) or SelectMonster == "Snow Demon" then
-                Mon = "Snow Demon"
-                LevelQuest = 2
-                NameQuest = "CandyQuest1"
-                NameMon = "Snow Demon"
-                CFrameQuest = CFrame.new(-1150.0400390625, 20.378934860229492, -14446.3349609375)
-                CFrameMon = CFrame.new(-880.2006225585938, 71.24776458740234, -14538.609375)
-            elseif (MyLevel >= 2450 and MyLevel <= 2474) or SelectMonster == "Isle Outlaw" then
-                Mon = "Isle Outlaw"
-                LevelQuest = 1
-                NameQuest = "TikiQuest1"
-                NameMon = "Isle Outlaw"
-                CFrameQuest = CFrame.new(-16547.748046875, 61.13533401489258, -173.41360473632812)
-                CFrameMon = CFrame.new(-16442.814453125, 116.13899993896484, -264.4637756347656)
-            elseif (MyLevel >= 2475 and MyLevel <= 2524) or SelectMonster == "Island Boy" then
-                Mon = "Island Boy"
-                LevelQuest = 2
-                NameQuest = "TikiQuest1"
-                NameMon = "Island Boy"
-                CFrameQuest = CFrame.new(-16547.748046875, 61.13533401489258, -173.41360473632812)
-                CFrameMon = CFrame.new(-16901.26171875, 84.06756591796875, -192.88906860351562)
-            elseif (MyLevel >= 2525 and MyLevel <= 2550) or SelectMonster == "Isle Champion" then
-                Mon = "Isle Champion"
-                LevelQuest = 2
-                NameQuest = "TikiQuest2"
-                NameMon = "Isle Champion"
-                CFrameQuest = CFrame.new(-16539.078125, 55.68632888793945, 1051.5738525390625)
-                CFrameMon = CFrame.new(-16641.6796875, 235.7825469970703, 1031.282958984375)
-                elseif (MyLevel >= 2550 and MyLevel <= 2574) or SelectMonster == "Serpent Hunter" then
-                Mon = "Serpent Hunter"
-                LevelQuest = 1
-                NameQuest = "TikiQuest3"
-                NameMon = "Serpent Hunter"
-                CFrameQuest = CFrame.new(-16665.1914, 104.596405, 1579.69434, 0.951068401, -0, -0.308980465, 0, 1, -0, 0.308980465, 0, 0.951068401)
-                CFrameMon = CFrame.new(-16521.0625, 106.09285, 1488.78467, 0.469467044, 0, 0.882950008, 0, 1, 0, -0.882950008, 0, 0.469467044)
-               elseif MyLevel >= 2575 or SelectMonster == "Skull Slayer" then
-                Mon = "Skull Slayer"
-                LevelQuest = 2
-                NameQuest = "TikiQuest3"
-                NameMon = "Skull Slayer"
-                CFrameQuest = CFrame.new(-16665.1914, 104.596405, 1579.69434, 0.951068401, -0, -0.308980465, 0, 1, -0, 0.308980465, 0, 0.951068401)
-                CFrameMon = CFrame.new(-16855.043, 122.457253, 1478.15308, -0.999392271, 0, -0.0348687991, 0, 1, 0, 0.0348687991, 0, -0.999392271)
-            end
-        end
-    end
-  
-function Hop()
-    local PlaceID = game.PlaceId
-    local AllIDs = {}
-    local foundAnything = ""
-    local actualHour = os.date("!*t").hour
-    local Deleted = false
-    function TPReturner()
-        local Site;
-        if foundAnything == "" then
-            Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100'))
-        else
-            Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
-        end
-        local ID = ""
-        if Site.nextPageCursor and Site.nextPageCursor ~= "null" and Site.nextPageCursor ~= nil then
-            foundAnything = Site.nextPageCursor
-        end
-        local num = 0;
-        for i,v in pairs(Site.data) do
-            local Possible = true
-            ID = tostring(v.id)
-            if tonumber(v.maxPlayers) > tonumber(v.playing) then
-                for _,Existing in pairs(AllIDs) do
-                    if num ~= 0 then
-                        if ID == tostring(Existing) then
-                            Possible = false
-                        end
-                    else
-                        if tonumber(actualHour) ~= tonumber(Existing) then
-                            local delFile = pcall(function()                                
-                                AllIDs = {}
-                                table.insert(AllIDs, actualHour)
-                            end)
-                        end
-                    end
-                    num = num + 1
-                end
-                if Possible == true then
-                    table.insert(AllIDs, ID)
-                    wait(.1)
-                    pcall(function()
-                        
-                        wait()
-                        game:GetService("TeleportService"):TeleportToPlaceInstance(PlaceID, ID, game.Players.LocalPlayer)
-                    end)
-                    wait(.1)
-                end
-            end
-        end
-    end
-    function Teleport() 
-        while wait(.1) do
-            pcall(function()
-                TPReturner()
-                if foundAnything ~= "" then
-                    TPReturner()
-                end
-            end)
-        end
-    end
-    Teleport()
-end
-
-function CheckItem(ah)
-    for k, v in pairs(game:GetService("ReplicatedStorage").Remotes["CommF_"]:InvokeServer("getInventory")) do
-        if v.Name == ah then
-            return v
-        end
-    end
-end
-
-    function UpdateIslandESP() 
-        for i,v in pairs(game:GetService("Workspace")["_WorldOrigin"].Locations:GetChildren()) do
-            pcall(function()
-                if IslandESP then 
-                    if v.Name ~= "Sea" then
-                        if not v:FindFirstChild('NameEsp') then
-                            local bill = Instance.new('BillboardGui',v)
-                            bill.Name = 'NameEsp'
-                            bill.ExtentsOffset = Vector3.new(0, 1, 0)
-                            bill.Size = UDim2.new(1,200,1,30)
-                            bill.Adornee = v
-                            bill.AlwaysOnTop = true
-                            local name = Instance.new('TextLabel',bill)
-                            name.Font = "GothamSemibold"
-                            name.FontSize = "Size14"
-                            name.TextWrapped = true
-                            name.Size = UDim2.new(1,0,1,0)
-                            name.TextYAlignment = 'Top'
-                            name.BackgroundTransparency = 1
-                            name.TextStrokeTransparency = 0.5
-                            name.TextColor3 = Color3.fromRGB(255, 255, 255)
-                        else
-                            v['NameEsp'].TextLabel.Text = (v.Name ..'   \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Position).Magnitude/3) ..' Distance')
-                        end
-                    end
-                else
-                    if v:FindFirstChild('NameEsp') then
-                        v:FindFirstChild('NameEsp'):Destroy()
-                    end
-                end
-            end)
-        end
-    end
-    
-    function isnil(thing)
-	return (thing == nil)
-end
-local function round(n)
-	return math.floor(tonumber(n) + 0.5)
-end
-Number = math.random(1, 1000000)
-function UpdatePlayerChams()
-	for i,v in pairs(game:GetService'Players':GetChildren()) do
-		pcall(function()
-			if not isnil(v.Character) then
-				if ESPPlayer then
-					if not isnil(v.Character.Head) and not v.Character.Head:FindFirstChild('NameEsp'..Number) then
-						local bill = Instance.new('BillboardGui',v.Character.Head)
-						bill.Name = 'NameEsp'..Number
-						bill.ExtentsOffset = Vector3.new(0, 1, 0)
-						bill.Size = UDim2.new(1,200,1,30)
-						bill.Adornee = v.Character.Head
-						bill.AlwaysOnTop = true
-						local name = Instance.new('TextLabel',bill)
-						name.Font = Enum.Font.GothamSemibold
-						name.FontSize = "Size14"
-						name.TextWrapped = true
-						name.Text = (v.Name ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Character.Head.Position).Magnitude/3) ..' Distance')
-						name.Size = UDim2.new(1,0,1,0)
-						name.TextYAlignment = 'Top'
-						name.BackgroundTransparency = 1
-						name.TextStrokeTransparency = 0.5
-						if v.Team == game.Players.LocalPlayer.Team then
-							name.TextColor3 = Color3.new(0,255,0)
-						else
-							name.TextColor3 = Color3.new(255,0,0)
-						end
-					else
-						v.Character.Head['NameEsp'..Number].TextLabel.Text = (v.Name ..' | '.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Character.Head.Position).Magnitude/3) ..' Distance\nHealth : ' .. round(v.Character.Humanoid.Health*100/v.Character.Humanoid.MaxHealth) .. '%')
-					end
-				else
-					if v.Character.Head:FindFirstChild('NameEsp'..Number) then
-						v.Character.Head:FindFirstChild('NameEsp'..Number):Destroy()
-					end
-				end
-			end
-		end)
-	end
-end
-function UpdateChestESP()
-    for _, chest in pairs(game:GetService("CollectionService"):GetTagged("_ChestTagged")) do
-        pcall(function()
-            if _G.ChestESP then
-                if not chest:GetAttribute("IsDisabled") then
-                    if not chest:FindFirstChild("ChestEsp") then
-                        local bill = Instance.new("BillboardGui", chest)
-                        bill.Name = "ChestEsp"
-                        bill.ExtentsOffset = Vector3.new(0, 1, 0)
-                        bill.Size = UDim2.new(1, 200, 1, 30)
-                        bill.Adornee = chest
-                        bill.AlwaysOnTop = true
-                        local name = Instance.new("TextLabel", bill)
-                        name.Font = "Code"
-                        name.FontSize = "Size14"
-                        name.TextWrapped = true
-                        name.Size = UDim2.new(1, 0, 1, 0)
-                        name.TextYAlignment = "Top"
-                        name.BackgroundTransparency = 1
-                        name.TextStrokeTransparency = 0.5
-                        name.TextColor3 = Color3.fromRGB(255, 215, 0) -- MÃ u vÃ ng cho chest
-                    else
-                        local distance = round((game:GetService("Players").LocalPlayer.Character.Head.Position - chest:GetPivot().Position).Magnitude / 3)
-                        chest["ChestEsp"].TextLabel.Text = ("Chest\n" .. distance .. " M")
-                    end
-                end
-            else
-                if chest:FindFirstChild("ChestEsp") then
-                    chest:FindFirstChild("ChestEsp"):Destroy()
-                end
-            end
-        end)
-    end
-end
-
-function round(num)
-    return math.floor(num + 0.5)
-end
-function UpdateDevilChams() 
-	for i,v in pairs(game.Workspace:GetChildren()) do
-		pcall(function()
-			if DevilFruitESP then
-				if string.find(v.Name, "Fruit") then   
-					if not v.Handle:FindFirstChild('NameEsp'..Number) then
-						local bill = Instance.new('BillboardGui',v.Handle)
-						bill.Name = 'NameEsp'..Number
-						bill.ExtentsOffset = Vector3.new(0, 1, 0)
-						bill.Size = UDim2.new(1,200,1,30)
-						bill.Adornee = v.Handle
-						bill.AlwaysOnTop = true
-						local name = Instance.new('TextLabel',bill)
-						name.Font = Enum.Font.GothamSemibold
-						name.FontSize = "Size14"
-						name.TextWrapped = true
-						name.Size = UDim2.new(1,0,1,0)
-						name.TextYAlignment = 'Top'
-						name.BackgroundTransparency = 1
-						name.TextStrokeTransparency = 0.5
-						name.TextColor3 = Color3.fromRGB(255, 255, 255)
-						name.Text = (v.Name ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-					else
-						v.Handle['NameEsp'..Number].TextLabel.Text = (v.Name ..'   \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-					end
-				end
-			else
-				if v.Handle:FindFirstChild('NameEsp'..Number) then
-					v.Handle:FindFirstChild('NameEsp'..Number):Destroy()
-				end
-			end
-		end)
-	end
-end
-function UpdateFlowerChams() 
-	for i,v in pairs(game.Workspace:GetChildren()) do
-		pcall(function()
-			if v.Name == "Flower2" or v.Name == "Flower1" then
-				if FlowerESP then 
-					if not v:FindFirstChild('NameEsp'..Number) then
-						local bill = Instance.new('BillboardGui',v)
-						bill.Name = 'NameEsp'..Number
-						bill.ExtentsOffset = Vector3.new(0, 1, 0)
-						bill.Size = UDim2.new(1,200,1,30)
-						bill.Adornee = v
-						bill.AlwaysOnTop = true
-						local name = Instance.new('TextLabel',bill)
-						name.Font = Enum.Font.GothamSemibold
-						name.FontSize = "Size14"
-						name.TextWrapped = true
-						name.Size = UDim2.new(1,0,1,0)
-						name.TextYAlignment = 'Top'
-						name.BackgroundTransparency = 1
-						name.TextStrokeTransparency = 0.5
-						name.TextColor3 = Color3.fromRGB(255, 0, 0)
-						if v.Name == "Flower1" then 
-							name.Text = ("Blue Flower" ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Position).Magnitude/3) ..' Distance')
-							name.TextColor3 = Color3.fromRGB(0, 0, 255)
-						end
-						if v.Name == "Flower2" then
-							name.Text = ("Red Flower" ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Position).Magnitude/3) ..' Distance')
-							name.TextColor3 = Color3.fromRGB(255, 0, 0)
-						end
-					else
-						v['NameEsp'..Number].TextLabel.Text = (v.Name ..'   \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Position).Magnitude/3) ..' Distance')
-					end
-				else
-					if v:FindFirstChild('NameEsp'..Number) then
-					v:FindFirstChild('NameEsp'..Number):Destroy()
-					end
-				end
-			end   
-		end)
-	end
-end
-function UpdateRealFruitChams() 
-	for i,v in pairs(game.Workspace.AppleSpawner:GetChildren()) do
-		if v:IsA("Tool") then
-			if RealFruitESP then 
-				if not v.Handle:FindFirstChild('NameEsp'..Number) then
-					local bill = Instance.new('BillboardGui',v.Handle)
-					bill.Name = 'NameEsp'..Number
-					bill.ExtentsOffset = Vector3.new(0, 1, 0)
-					bill.Size = UDim2.new(1,200,1,30)
-					bill.Adornee = v.Handle
-					bill.AlwaysOnTop = true
-					local name = Instance.new('TextLabel',bill)
-					name.Font = Enum.Font.GothamSemibold
-					name.FontSize = "Size14"
-					name.TextWrapped = true
-					name.Size = UDim2.new(1,0,1,0)
-					name.TextYAlignment = 'Top'
-					name.BackgroundTransparency = 1
-					name.TextStrokeTransparency = 0.5
-					name.TextColor3 = Color3.fromRGB(255, 0, 0)
-					name.Text = (v.Name ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-				else
-					v.Handle['NameEsp'..Number].TextLabel.Text = (v.Name ..' '.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-				end
-			else
-				if v.Handle:FindFirstChild('NameEsp'..Number) then
-					v.Handle:FindFirstChild('NameEsp'..Number):Destroy()
-				end
-			end 
-		end
-	end
-	for i,v in pairs(game.Workspace.PineappleSpawner:GetChildren()) do
-		if v:IsA("Tool") then
-			if RealFruitESP then 
-				if not v.Handle:FindFirstChild('NameEsp'..Number) then
-					local bill = Instance.new('BillboardGui',v.Handle)
-					bill.Name = 'NameEsp'..Number
-					bill.ExtentsOffset = Vector3.new(0, 1, 0)
-					bill.Size = UDim2.new(1,200,1,30)
-					bill.Adornee = v.Handle
-					bill.AlwaysOnTop = true
-					local name = Instance.new('TextLabel',bill)
-					name.Font = Enum.Font.GothamSemibold
-					name.FontSize = "Size14"
-					name.TextWrapped = true
-					name.Size = UDim2.new(1,0,1,0)
-					name.TextYAlignment = 'Top'
-					name.BackgroundTransparency = 1
-					name.TextStrokeTransparency = 0.5
-					name.TextColor3 = Color3.fromRGB(255, 174, 0)
-					name.Text = (v.Name ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-				else
-					v.Handle['NameEsp'..Number].TextLabel.Text = (v.Name ..' '.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-				end
-			else
-				if v.Handle:FindFirstChild('NameEsp'..Number) then
-					v.Handle:FindFirstChild('NameEsp'..Number):Destroy()
-				end
-			end 
-		end
-	end
-	for i,v in pairs(game.Workspace.BananaSpawner:GetChildren()) do
-		if v:IsA("Tool") then
-			if RealFruitESP then 
-				if not v.Handle:FindFirstChild('NameEsp'..Number) then
-					local bill = Instance.new('BillboardGui',v.Handle)
-					bill.Name = 'NameEsp'..Number
-					bill.ExtentsOffset = Vector3.new(0, 1, 0)
-					bill.Size = UDim2.new(1,200,1,30)
-					bill.Adornee = v.Handle
-					bill.AlwaysOnTop = true
-					local name = Instance.new('TextLabel',bill)
-					name.Font = Enum.Font.GothamSemibold
-					name.FontSize = "Size14"
-					name.TextWrapped = true
-					name.Size = UDim2.new(1,0,1,0)
-					name.TextYAlignment = 'Top'
-					name.BackgroundTransparency = 1
-					name.TextStrokeTransparency = 0.5
-					name.TextColor3 = Color3.fromRGB(251, 255, 0)
-					name.Text = (v.Name ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-				else
-					v.Handle['NameEsp'..Number].TextLabel.Text = (v.Name ..' '.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-				end
-			else
-				if v.Handle:FindFirstChild('NameEsp'..Number) then
-					v.Handle:FindFirstChild('NameEsp'..Number):Destroy()
-				end
-			end 
-		end
-	end
-end
-
-function UpdateIslandESP() 
-        for i,v in pairs(game:GetService("Workspace")["_WorldOrigin"].Locations:GetChildren()) do
-            pcall(function()
-                if IslandESP then 
-                    if v.Name ~= "Sea" then
-                        if not v:FindFirstChild('NameEsp') then
-                            local bill = Instance.new('BillboardGui',v)
-                            bill.Name = 'NameEsp'
-                            bill.ExtentsOffset = Vector3.new(0, 1, 0)
-                            bill.Size = UDim2.new(1,200,1,30)
-                            bill.Adornee = v
-                            bill.AlwaysOnTop = true
-                            local name = Instance.new('TextLabel',bill)
-                            name.Font = "GothamSemibold"
-                            name.FontSize = "Size14"
-                            name.TextWrapped = true
-                            name.Size = UDim2.new(1,0,1,0)
-                            name.TextYAlignment = 'Top'
-                            name.BackgroundTransparency = 1
-                            name.TextStrokeTransparency = 0.5
-                            name.TextColor3 = Color3.fromRGB(8, 247, 255)
-                        else
-                            v['NameEsp'].TextLabel.Text = (v.Name ..'   \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Position).Magnitude/3) ..' Distance')
-                        end
-                    end
-                else
-                    if v:FindFirstChild('NameEsp') then
-                        v:FindFirstChild('NameEsp'):Destroy()
-                    end
-                end
-            end)
-        end
-    end
-  function isnil(thing)
-	return (thing == nil)
-end
-local function round(n)
-	return math.floor(tonumber(n) + 0.5)
-end
-Number = math.random(1, 1000000)
-function UpdatePlayerChams()
-	for i,v in pairs(game:GetService'Players':GetChildren()) do
-		pcall(function()
-			if not isnil(v.Character) then
-				if ESPPlayer then
-					if not isnil(v.Character.Head) and not v.Character.Head:FindFirstChild('NameEsp'..Number) then
-						local bill = Instance.new('BillboardGui',v.Character.Head)
-						bill.Name = 'NameEsp'..Number
-						bill.ExtentsOffset = Vector3.new(0, 1, 0)
-						bill.Size = UDim2.new(1,200,1,30)
-						bill.Adornee = v.Character.Head
-						bill.AlwaysOnTop = true
-						local name = Instance.new('TextLabel',bill)
-						name.Font = Enum.Font.GothamSemibold
-						name.FontSize = "Size14"
-						name.TextWrapped = true
-						name.Text = (v.Name ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Character.Head.Position).Magnitude/3) ..' Distance')
-						name.Size = UDim2.new(1,0,1,0)
-						name.TextYAlignment = 'Top'
-						name.BackgroundTransparency = 1
-						name.TextStrokeTransparency = 0.5
-						if v.Team == game.Players.LocalPlayer.Team then
-							name.TextColor3 = Color3.new(0,255,0)
-						else
-							name.TextColor3 = Color3.new(255,0,0)
-						end
-					else
-						v.Character.Head['NameEsp'..Number].TextLabel.Text = (v.Name ..' | '.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Character.Head.Position).Magnitude/3) ..' Distance\nHealth : ' .. round(v.Character.Humanoid.Health*100/v.Character.Humanoid.MaxHealth) .. '%')
-					end
-				else
-					if v.Character.Head:FindFirstChild('NameEsp'..Number) then
-						v.Character.Head:FindFirstChild('NameEsp'..Number):Destroy()
-					end
-				end
-			end
-		end)
-	end
-end
-function UpdateChestESP()
-    for _, chest in pairs(game:GetService("CollectionService"):GetTagged("_ChestTagged")) do
-        pcall(function()
-            if _G.ChestESP then
-                if not chest:GetAttribute("IsDisabled") then
-                    if not chest:FindFirstChild("ChestEsp") then
-                        local bill = Instance.new("BillboardGui", chest)
-                        bill.Name = "ChestEsp"
-                        bill.ExtentsOffset = Vector3.new(0, 1, 0)
-                        bill.Size = UDim2.new(1, 200, 1, 30)
-                        bill.Adornee = chest
-                        bill.AlwaysOnTop = true
-                        local name = Instance.new("TextLabel", bill)
-                        name.Font = "Code"
-                        name.FontSize = "Size14"
-                        name.TextWrapped = true
-                        name.Size = UDim2.new(1, 0, 1, 0)
-                        name.TextYAlignment = "Top"
-                        name.BackgroundTransparency = 1
-                        name.TextStrokeTransparency = 0.5
-                        name.TextColor3 = Color3.fromRGB(255, 215, 0) -- MÃ u vÃ ng cho chest
-                    else
-                        local distance = round((game:GetService("Players").LocalPlayer.Character.Head.Position - chest:GetPivot().Position).Magnitude / 3)
-                        chest["ChestEsp"].TextLabel.Text = ("Chest\n" .. distance .. " M")
-                    end
-                end
-            else
-                if chest:FindFirstChild("ChestEsp") then
-                    chest:FindFirstChild("ChestEsp"):Destroy()
-                end
-            end
-        end)
-    end
-end
-
-function round(num)
-    return math.floor(num + 0.5)
-end
-function UpdateDevilChams() 
-	for i,v in pairs(game.Workspace:GetChildren()) do
-		pcall(function()
-			if DevilFruitESP then
-				if string.find(v.Name, "Fruit") then   
-					if not v.Handle:FindFirstChild('NameEsp'..Number) then
-						local bill = Instance.new('BillboardGui',v.Handle)
-						bill.Name = 'NameEsp'..Number
-						bill.ExtentsOffset = Vector3.new(0, 1, 0)
-						bill.Size = UDim2.new(1,200,1,30)
-						bill.Adornee = v.Handle
-						bill.AlwaysOnTop = true
-						local name = Instance.new('TextLabel',bill)
-						name.Font = Enum.Font.GothamSemibold
-						name.FontSize = "Size14"
-						name.TextWrapped = true
-						name.Size = UDim2.new(1,0,1,0)
-						name.TextYAlignment = 'Top'
-						name.BackgroundTransparency = 1
-						name.TextStrokeTransparency = 0.5
-						name.TextColor3 = Color3.fromRGB(255, 255, 255)
-						name.Text = (v.Name ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-					else
-						v.Handle['NameEsp'..Number].TextLabel.Text = (v.Name ..'   \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-					end
-				end
-			else
-				if v.Handle:FindFirstChild('NameEsp'..Number) then
-					v.Handle:FindFirstChild('NameEsp'..Number):Destroy()
-				end
-			end
-		end)
-	end
-end
-function UpdateFlowerChams() 
-	for i,v in pairs(game.Workspace:GetChildren()) do
-		pcall(function()
-			if v.Name == "Flower2" or v.Name == "Flower1" then
-				if FlowerESP then 
-					if not v:FindFirstChild('NameEsp'..Number) then
-						local bill = Instance.new('BillboardGui',v)
-						bill.Name = 'NameEsp'..Number
-						bill.ExtentsOffset = Vector3.new(0, 1, 0)
-						bill.Size = UDim2.new(1,200,1,30)
-						bill.Adornee = v
-						bill.AlwaysOnTop = true
-						local name = Instance.new('TextLabel',bill)
-						name.Font = Enum.Font.GothamSemibold
-						name.FontSize = "Size14"
-						name.TextWrapped = true
-						name.Size = UDim2.new(1,0,1,0)
-						name.TextYAlignment = 'Top'
-						name.BackgroundTransparency = 1
-						name.TextStrokeTransparency = 0.5
-						name.TextColor3 = Color3.fromRGB(255, 0, 0)
-						if v.Name == "Flower1" then 
-							name.Text = ("Blue Flower" ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Position).Magnitude/3) ..' Distance')
-							name.TextColor3 = Color3.fromRGB(0, 0, 255)
-						end
-						if v.Name == "Flower2" then
-							name.Text = ("Red Flower" ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Position).Magnitude/3) ..' Distance')
-							name.TextColor3 = Color3.fromRGB(255, 0, 0)
-						end
-					else
-						v['NameEsp'..Number].TextLabel.Text = (v.Name ..'   \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Position).Magnitude/3) ..' Distance')
-					end
-				else
-					if v:FindFirstChild('NameEsp'..Number) then
-					v:FindFirstChild('NameEsp'..Number):Destroy()
-					end
-				end
-			end   
-		end)
-	end
-end
-
-function UpdateRealFruitChams() 
-	for i,v in pairs(game.Workspace.AppleSpawner:GetChildren()) do
-		if v:IsA("Tool") then
-			if RealFruitESP then 
-				if not v.Handle:FindFirstChild('NameEsp'..Number) then
-					local bill = Instance.new('BillboardGui',v.Handle)
-					bill.Name = 'NameEsp'..Number
-					bill.ExtentsOffset = Vector3.new(0, 1, 0)
-					bill.Size = UDim2.new(1,200,1,30)
-					bill.Adornee = v.Handle
-					bill.AlwaysOnTop = true
-					local name = Instance.new('TextLabel',bill)
-					name.Font = Enum.Font.GothamSemibold
-					name.FontSize = "Size14"
-					name.TextWrapped = true
-					name.Size = UDim2.new(1,0,1,0)
-					name.TextYAlignment = 'Top'
-					name.BackgroundTransparency = 1
-					name.TextStrokeTransparency = 0.5
-					name.TextColor3 = Color3.fromRGB(255, 0, 0)
-					name.Text = (v.Name ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-				else
-					v.Handle['NameEsp'..Number].TextLabel.Text = (v.Name ..' '.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-				end
-			else
-				if v.Handle:FindFirstChild('NameEsp'..Number) then
-					v.Handle:FindFirstChild('NameEsp'..Number):Destroy()
-				end
-			end 
-		end
-	end
-	for i,v in pairs(game.Workspace.PineappleSpawner:GetChildren()) do
-		if v:IsA("Tool") then
-			if RealFruitESP then 
-				if not v.Handle:FindFirstChild('NameEsp'..Number) then
-					local bill = Instance.new('BillboardGui',v.Handle)
-					bill.Name = 'NameEsp'..Number
-					bill.ExtentsOffset = Vector3.new(0, 1, 0)
-					bill.Size = UDim2.new(1,200,1,30)
-					bill.Adornee = v.Handle
-					bill.AlwaysOnTop = true
-					local name = Instance.new('TextLabel',bill)
-					name.Font = Enum.Font.GothamSemibold
-					name.FontSize = "Size14"
-					name.TextWrapped = true
-					name.Size = UDim2.new(1,0,1,0)
-					name.TextYAlignment = 'Top'
-					name.BackgroundTransparency = 1
-					name.TextStrokeTransparency = 0.5
-					name.TextColor3 = Color3.fromRGB(255, 174, 0)
-					name.Text = (v.Name ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-				else
-					v.Handle['NameEsp'..Number].TextLabel.Text = (v.Name ..' '.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-				end
-			else
-				if v.Handle:FindFirstChild('NameEsp'..Number) then
-					v.Handle:FindFirstChild('NameEsp'..Number):Destroy()
-				end
-			end 
-		end
-	end
-	for i,v in pairs(game.Workspace.BananaSpawner:GetChildren()) do
-		if v:IsA("Tool") then
-			if RealFruitESP then 
-				if not v.Handle:FindFirstChild('NameEsp'..Number) then
-					local bill = Instance.new('BillboardGui',v.Handle)
-					bill.Name = 'NameEsp'..Number
-					bill.ExtentsOffset = Vector3.new(0, 1, 0)
-					bill.Size = UDim2.new(1,200,1,30)
-					bill.Adornee = v.Handle
-					bill.AlwaysOnTop = true
-					local name = Instance.new('TextLabel',bill)
-					name.Font = Enum.Font.GothamSemibold
-					name.FontSize = "Size14"
-					name.TextWrapped = true
-					name.Size = UDim2.new(1,0,1,0)
-					name.TextYAlignment = 'Top'
-					name.BackgroundTransparency = 1
-					name.TextStrokeTransparency = 0.5
-					name.TextColor3 = Color3.fromRGB(251, 255, 0)
-					name.Text = (v.Name ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-				else
-					v.Handle['NameEsp'..Number].TextLabel.Text = (v.Name ..' '.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-				end
-			else
-				if v.Handle:FindFirstChild('NameEsp'..Number) then
-					v.Handle:FindFirstChild('NameEsp'..Number):Destroy()
-				end
-			end 
-		end
-	end
-end
-
-function UpdateIslandESP() 
-        for i,v in pairs(game:GetService("Workspace")["_WorldOrigin"].Locations:GetChildren()) do
-            pcall(function()
-                if IslandESP then 
-                    if v.Name ~= "Sea" then
-                        if not v:FindFirstChild('NameEsp') then
-                            local bill = Instance.new('BillboardGui',v)
-                            bill.Name = 'NameEsp'
-                            bill.ExtentsOffset = Vector3.new(0, 1, 0)
-                            bill.Size = UDim2.new(1,200,1,30)
-                            bill.Adornee = v
-                            bill.AlwaysOnTop = true
-                            local name = Instance.new('TextLabel',bill)
-                            name.Font = "GothamSemibold"
-                            name.FontSize = "Size14"
-                            name.TextWrapped = true
-                            name.Size = UDim2.new(1,0,1,0)
-                            name.TextYAlignment = 'Top'
-                            name.BackgroundTransparency = 1
-                            name.TextStrokeTransparency = 0.5
-                            name.TextColor3 = Color3.fromRGB(8, 247, 255)
-                        else
-                            v['NameEsp'].TextLabel.Text = (v.Name ..'   \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Position).Magnitude/3) ..' Distance')
-                        end
-                    end
-                else
-                    if v:FindFirstChild('NameEsp') then
-                        v:FindFirstChild('NameEsp'):Destroy()
-                    end
-                end
-            end)
-        end
-    end
-  function isnil(thing)
-	return (thing == nil)
-end
-local function round(n)
-	return math.floor(tonumber(n) + 0.5)
-end
-Number = math.random(1, 1000000)
-function UpdatePlayerChams()
-	for i,v in pairs(game:GetService'Players':GetChildren()) do
-		pcall(function()
-			if not isnil(v.Character) then
-				if ESPPlayer then
-					if not isnil(v.Character.Head) and not v.Character.Head:FindFirstChild('NameEsp'..Number) then
-						local bill = Instance.new('BillboardGui',v.Character.Head)
-						bill.Name = 'NameEsp'..Number
-						bill.ExtentsOffset = Vector3.new(0, 1, 0)
-						bill.Size = UDim2.new(1,200,1,30)
-						bill.Adornee = v.Character.Head
-						bill.AlwaysOnTop = true
-						local name = Instance.new('TextLabel',bill)
-						name.Font = Enum.Font.GothamSemibold
-						name.FontSize = "Size14"
-						name.TextWrapped = true
-						name.Text = (v.Name ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Character.Head.Position).Magnitude/3) ..' Distance')
-						name.Size = UDim2.new(1,0,1,0)
-						name.TextYAlignment = 'Top'
-						name.BackgroundTransparency = 1
-						name.TextStrokeTransparency = 0.5
-						if v.Team == game.Players.LocalPlayer.Team then
-							name.TextColor3 = Color3.new(0,255,0)
-						else
-							name.TextColor3 = Color3.new(255,0,0)
-						end
-					else
-						v.Character.Head['NameEsp'..Number].TextLabel.Text = (v.Name ..' | '.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Character.Head.Position).Magnitude/3) ..' Distance\nHealth : ' .. round(v.Character.Humanoid.Health*100/v.Character.Humanoid.MaxHealth) .. '%')
-					end
-				else
-					if v.Character.Head:FindFirstChild('NameEsp'..Number) then
-						v.Character.Head:FindFirstChild('NameEsp'..Number):Destroy()
-					end
-				end
-			end
-		end)
-	end
-end
-function UpdateChestESP()
-    for _, chest in pairs(game:GetService("CollectionService"):GetTagged("_ChestTagged")) do
-        pcall(function()
-            if _G.ChestESP then
-                if not chest:GetAttribute("IsDisabled") then
-                    if not chest:FindFirstChild("ChestEsp") then
-                        local bill = Instance.new("BillboardGui", chest)
-                        bill.Name = "ChestEsp"
-                        bill.ExtentsOffset = Vector3.new(0, 1, 0)
-                        bill.Size = UDim2.new(1, 200, 1, 30)
-                        bill.Adornee = chest
-                        bill.AlwaysOnTop = true
-                        local name = Instance.new("TextLabel", bill)
-                        name.Font = "Code"
-                        name.FontSize = "Size14"
-                        name.TextWrapped = true
-                        name.Size = UDim2.new(1, 0, 1, 0)
-                        name.TextYAlignment = "Top"
-                        name.BackgroundTransparency = 1
-                        name.TextStrokeTransparency = 0.5
-                        name.TextColor3 = Color3.fromRGB(255, 215, 0) -- MÃ u vÃ ng cho chest
-                    else
-                        local distance = round((game:GetService("Players").LocalPlayer.Character.Head.Position - chest:GetPivot().Position).Magnitude / 3)
-                        chest["ChestEsp"].TextLabel.Text = ("Chest\n" .. distance .. " M")
-                    end
-                end
-            else
-                if chest:FindFirstChild("ChestEsp") then
-                    chest:FindFirstChild("ChestEsp"):Destroy()
-                end
-            end
-        end)
-    end
-end
-
-function round(num)
-    return math.floor(num + 0.5)
-end
-function UpdateDevilChams() 
-	for i,v in pairs(game.Workspace:GetChildren()) do
-		pcall(function()
-			if DevilFruitESP then
-				if string.find(v.Name, "Fruit") then   
-					if not v.Handle:FindFirstChild('NameEsp'..Number) then
-						local bill = Instance.new('BillboardGui',v.Handle)
-						bill.Name = 'NameEsp'..Number
-						bill.ExtentsOffset = Vector3.new(0, 1, 0)
-						bill.Size = UDim2.new(1,200,1,30)
-						bill.Adornee = v.Handle
-						bill.AlwaysOnTop = true
-						local name = Instance.new('TextLabel',bill)
-						name.Font = Enum.Font.GothamSemibold
-						name.FontSize = "Size14"
-						name.TextWrapped = true
-						name.Size = UDim2.new(1,0,1,0)
-						name.TextYAlignment = 'Top'
-						name.BackgroundTransparency = 1
-						name.TextStrokeTransparency = 0.5
-						name.TextColor3 = Color3.fromRGB(255, 255, 255)
-						name.Text = (v.Name ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-					else
-						v.Handle['NameEsp'..Number].TextLabel.Text = (v.Name ..'   \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-					end
-				end
-			else
-				if v.Handle:FindFirstChild('NameEsp'..Number) then
-					v.Handle:FindFirstChild('NameEsp'..Number):Destroy()
-				end
-			end
-		end)
-	end
-end
-function UpdateFlowerChams() 
-	for i,v in pairs(game.Workspace:GetChildren()) do
-		pcall(function()
-			if v.Name == "Flower2" or v.Name == "Flower1" then
-				if FlowerESP then 
-					if not v:FindFirstChild('NameEsp'..Number) then
-						local bill = Instance.new('BillboardGui',v)
-						bill.Name = 'NameEsp'..Number
-						bill.ExtentsOffset = Vector3.new(0, 1, 0)
-						bill.Size = UDim2.new(1,200,1,30)
-						bill.Adornee = v
-						bill.AlwaysOnTop = true
-						local name = Instance.new('TextLabel',bill)
-						name.Font = Enum.Font.GothamSemibold
-						name.FontSize = "Size14"
-						name.TextWrapped = true
-						name.Size = UDim2.new(1,0,1,0)
-						name.TextYAlignment = 'Top'
-						name.BackgroundTransparency = 1
-						name.TextStrokeTransparency = 0.5
-						name.TextColor3 = Color3.fromRGB(255, 0, 0)
-						if v.Name == "Flower1" then 
-							name.Text = ("Blue Flower" ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Position).Magnitude/3) ..' Distance')
-							name.TextColor3 = Color3.fromRGB(0, 0, 255)
-						end
-						if v.Name == "Flower2" then
-							name.Text = ("Red Flower" ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Position).Magnitude/3) ..' Distance')
-							name.TextColor3 = Color3.fromRGB(255, 0, 0)
-						end
-					else
-						v['NameEsp'..Number].TextLabel.Text = (v.Name ..'   \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Position).Magnitude/3) ..' Distance')
-					end
-				else
-					if v:FindFirstChild('NameEsp'..Number) then
-					v:FindFirstChild('NameEsp'..Number):Destroy()
-					end
-				end
-			end   
-		end)
-	end
-end
-function UpdateRealFruitChams() 
-	for i,v in pairs(game.Workspace.AppleSpawner:GetChildren()) do
-		if v:IsA("Tool") then
-			if RealFruitESP then 
-				if not v.Handle:FindFirstChild('NameEsp'..Number) then
-					local bill = Instance.new('BillboardGui',v.Handle)
-					bill.Name = 'NameEsp'..Number
-					bill.ExtentsOffset = Vector3.new(0, 1, 0)
-					bill.Size = UDim2.new(1,200,1,30)
-					bill.Adornee = v.Handle
-					bill.AlwaysOnTop = true
-					local name = Instance.new('TextLabel',bill)
-					name.Font = Enum.Font.GothamSemibold
-					name.FontSize = "Size14"
-					name.TextWrapped = true
-					name.Size = UDim2.new(1,0,1,0)
-					name.TextYAlignment = 'Top'
-					name.BackgroundTransparency = 1
-					name.TextStrokeTransparency = 0.5
-					name.TextColor3 = Color3.fromRGB(255, 0, 0)
-					name.Text = (v.Name ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-				else
-					v.Handle['NameEsp'..Number].TextLabel.Text = (v.Name ..' '.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-				end
-			else
-				if v.Handle:FindFirstChild('NameEsp'..Number) then
-					v.Handle:FindFirstChild('NameEsp'..Number):Destroy()
-				end
-			end 
-		end
-	end
-	for i,v in pairs(game.Workspace.PineappleSpawner:GetChildren()) do
-		if v:IsA("Tool") then
-			if RealFruitESP then 
-				if not v.Handle:FindFirstChild('NameEsp'..Number) then
-					local bill = Instance.new('BillboardGui',v.Handle)
-					bill.Name = 'NameEsp'..Number
-					bill.ExtentsOffset = Vector3.new(0, 1, 0)
-					bill.Size = UDim2.new(1,200,1,30)
-					bill.Adornee = v.Handle
-					bill.AlwaysOnTop = true
-					local name = Instance.new('TextLabel',bill)
-					name.Font = Enum.Font.GothamSemibold
-					name.FontSize = "Size14"
-					name.TextWrapped = true
-					name.Size = UDim2.new(1,0,1,0)
-					name.TextYAlignment = 'Top'
-					name.BackgroundTransparency = 1
-					name.TextStrokeTransparency = 0.5
-					name.TextColor3 = Color3.fromRGB(255, 174, 0)
-					name.Text = (v.Name ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-				else
-					v.Handle['NameEsp'..Number].TextLabel.Text = (v.Name ..' '.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-				end
-			else
-				if v.Handle:FindFirstChild('NameEsp'..Number) then
-					v.Handle:FindFirstChild('NameEsp'..Number):Destroy()
-				end
-			end 
-		end
-	end
-	for i,v in pairs(game.Workspace.BananaSpawner:GetChildren()) do
-		if v:IsA("Tool") then
-			if RealFruitESP then 
-				if not v.Handle:FindFirstChild('NameEsp'..Number) then
-					local bill = Instance.new('BillboardGui',v.Handle)
-					bill.Name = 'NameEsp'..Number
-					bill.ExtentsOffset = Vector3.new(0, 1, 0)
-					bill.Size = UDim2.new(1,200,1,30)
-					bill.Adornee = v.Handle
-					bill.AlwaysOnTop = true
-					local name = Instance.new('TextLabel',bill)
-					name.Font = Enum.Font.GothamSemibold
-					name.FontSize = "Size14"
-					name.TextWrapped = true
-					name.Size = UDim2.new(1,0,1,0)
-					name.TextYAlignment = 'Top'
-					name.BackgroundTransparency = 1
-					name.TextStrokeTransparency = 0.5
-					name.TextColor3 = Color3.fromRGB(251, 255, 0)
-					name.Text = (v.Name ..' \n'.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-				else
-					v.Handle['NameEsp'..Number].TextLabel.Text = (v.Name ..' '.. round((game:GetService('Players').LocalPlayer.Character.Head.Position - v.Handle.Position).Magnitude/3) ..' Distance')
-				end
-			else
-				if v.Handle:FindFirstChild('NameEsp'..Number) then
-					v.Handle:FindFirstChild('NameEsp'..Number):Destroy()
-				end
-			end 
-		end
-	end
-end
-
-spawn(function()
-    while wait() do
-        pcall(function()
-            if MobESP then
-                for i,v in pairs(game:GetService("Workspace").Enemies:GetChildren()) do
-                    if v:FindFirstChild('HumanoidRootPart') then
-                        if not v:FindFirstChild("MobEap") then
-                            local BillboardGui = Instance.new("BillboardGui")
-                            local TextLabel = Instance.new("TextLabel")
-
-                            BillboardGui.Parent = v
-                            BillboardGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-                            BillboardGui.Active = true
-                            BillboardGui.Name = "MobEap"
-                            BillboardGui.AlwaysOnTop = true
-                            BillboardGui.LightInfluence = 1.000
-                            BillboardGui.Size = UDim2.new(0, 200, 0, 50)
-                            BillboardGui.StudsOffset = Vector3.new(0, 2.5, 0)
-
-                            TextLabel.Parent = BillboardGui
-                            TextLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-                            TextLabel.BackgroundTransparency = 1.000
-                            TextLabel.Size = UDim2.new(0, 200, 0, 50)
-                            TextLabel.Font = Enum.Font.GothamBold
-                            TextLabel.TextColor3 = Color3.fromRGB(7, 236, 240)
-                            TextLabel.Text.Size = 35
-                        end
-                        local Dis = math.floor((game.Players.LocalPlayer.Character.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude)
-                        v.MobEap.TextLabel.Text = v.Name.." - "..Dis.." Distance"
-                    end
-                end
-            else
-                for i,v in pairs(game:GetService("Workspace").Enemies:GetChildren()) do
-                    if v:FindFirstChild("MobEap") then
-                        v.MobEap:Destroy()
-                    end
-                end
-            end
-        end)
-    end
-end)
-
-spawn(function()
-    while wait() do
-        pcall(function()
-            if SeaESP then
-                for i,v in pairs(game:GetService("Workspace").SeaBeasts:GetChildren()) do
-                    if v:FindFirstChild('HumanoidRootPart') then
-                        if not v:FindFirstChild("Seaesps") then
-                            local BillboardGui = Instance.new("BillboardGui")
-                            local TextLabel = Instance.new("TextLabel")
-
-                            BillboardGui.Parent = v
-                            BillboardGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-                            BillboardGui.Active = true
-                            BillboardGui.Name = "Seaesps"
-                            BillboardGui.AlwaysOnTop = true
-                            BillboardGui.LightInfluence = 1.000
-                            BillboardGui.Size = UDim2.new(0, 200, 0, 50)
-                            BillboardGui.StudsOffset = Vector3.new(0, 2.5, 0)
-
-                            TextLabel.Parent = BillboardGui
-                            TextLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-                            TextLabel.BackgroundTransparency = 1.000
-                            TextLabel.Size = UDim2.new…
+"[table]:{
+  [1] = {
+    [1] = {
+      [1] = 30,
+      [2] = 0,
+      [3] = "rrhiXbDlFHQEnxS",
+    },
+    [2] = {
+      [1] = 60,
+      [2] = 0,
+      [3] = 47,
+      [4] = 0,
+    },
+    [3] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 47,
+    },
+    [4] = {
+      [1] = 115,
+      [2] = 0,
+      [3] = 0,
+      [4] = 0,
+    },
+    [5] = {
+      [1] = 202,
+      [2] = 1,
+      [3] = 0,
+      [4] = 0,
+    },
+    [6] = {
+      [1] = 235,
+      [2] = 0,
+      [3] = 0,
+      [4] = 1,
+    },
+    [7] = {
+      [1] = 88,
+      [2] = 0,
+      [3] = 0,
+      [4] = 1,
+    },
+    [8] = {
+      [1] = 188,
+      [2] = 1,
+      [3] = 0,
+    },
+    [9] = {
+      [1] = 30,
+      [2] = 2,
+      [3] = "rrhiXbDlFHQEnxS",
+    },
+    [10] = {
+      [1] = 209,
+      [2] = 3,
+      [3] = 7,
+      [4] = 1,
+    },
+    [11] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 1,
+      [4] = 0,
+    },
+    [12] = {
+      [1] = 82,
+      [2] = 2,
+      [3] = 2,
+      [4] = 1,
+    },
+    [13] = {
+      [1] = 22,
+      [2] = 2,
+      [3] = "type",
+    },
+    [14] = {
+      [1] = 5,
+      [2] = 3,
+      [3] = "string",
+    },
+    [15] = {
+      [1] = 11,
+      [2] = 3,
+      [3] = 3,
+      [4] = "sub",
+    },
+    [16] = {
+      [1] = 11,
+      [2] = 4,
+      [3] = "table",
+    },
+    [17] = {
+      [1] = 17,
+      [2] = 4,
+      [3] = 4,
+      [4] = "foreach",
+    },
+    [18] = {
+      [1] = 8,
+      [2] = 5,
+      [3] = "string",
+    },
+    [19] = {
+      [1] = 88,
+      [2] = 5,
+      [3] = 5,
+      [4] = "char",
+    },
+    [20] = {
+      [1] = 94,
+      [2] = 6,
+      [3] = "string",
+    },
+    [21] = {
+      [1] = 24,
+      [2] = 6,
+      [3] = 6,
+      [4] = "byte",
+    },
+    [22] = {
+      [1] = 23,
+      [2] = 7,
+      [3] = 0,
+      [4] = 0,
+    },
+    [23] = {
+      [1] = 2,
+      [2] = 8,
+      [3] = 0,
+    },
+    [24] = {
+      [1] = 7,
+      [2] = 9,
+      [3] = 255,
+    },
+    [25] = {
+      [1] = 4,
+      [2] = 10,
+      [3] = 1,
+    },
+    [26] = {
+      [1] = 13,
+      [2] = 8,
+      [3] = 32,
+    },
+    [27] = {
+      [1] = 242,
+      [2] = 12,
+      [3] = 5,
+      [4] = 0,
+    },
+    [28] = {
+      [1] = 204,
+      [2] = 13,
+      [3] = 11,
+      [4] = 0,
+    },
+    [29] = {
+      [1] = 17,
+      [2] = 12,
+      [3] = 2,
+      [4] = 2,
+    },
+    [30] = {
+      [1] = 29,
+      [2] = 7,
+      [3] = 11,
+      [4] = 12,
+    },
+    [31] = {
+      [1] = 18,
+      [2] = 7,
+      [3] = 12,
+      [4] = 11,
+    },
+    [32] = {
+      [1] = 131,
+      [2] = 8,
+      [3] = 26,
+    },
+    [33] = {
+      [1] = 244,
+      [2] = 8,
+      [3] = 8,
+      [4] = 0,
+    },
+    [34] = {
+      [1] = 209,
+      [2] = 8,
+      [3] = 2,
+      [4] = 6,
+    },
+    [35] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 2,
+      [4] = 0,
+    },
+    [36] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 4,
+      [4] = 0,
+    },
+    [37] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 8,
+      [4] = 0,
+    },
+    [38] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 3,
+      [4] = 0,
+    },
+    [39] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 7,
+      [4] = 0,
+    },
+    [40] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 1,
+      [4] = 0,
+    },
+    [41] = {
+      [1] = 154,
+      [2] = 9,
+      [3] = 8,
+      [4] = 0,
+    },
+    [42] = {
+      [1] = 13,
+      [2] = 10,
+      [3] = 0,
+      [4] = 0,
+    },
+    [43] = {
+      [1] = 6,
+      [2] = 9,
+      [3] = 2,
+      [4] = 2,
+    },
+    [44] = {
+      [1] = 15,
+      [2] = 0,
+      [3] = 9,
+      [4] = 0,
+    },
+    [45] = {
+      [1] = 4,
+      [2] = 0,
+      [3] = 2,
+      [4] = 0,
+    },
+    [46] = {
+      [1] = 21,
+      [2] = 0,
+      [3] = 0,
+      [4] = 0,
+    },
+    [47] = {
+      [1] = 24,
+      [2] = 0,
+      [3] = 1417,
+    },
+    [48] = {
+      [1] = 30,
+      [2] = 0,
+      [3] = "SxnEQHFlDbXihrr",
+    },
+    [49] = {
+      [1] = 88,
+      [2] = 0,
+      [3] = 0,
+      [4] = 1,
+    },
+    [50] = {
+      [1] = 177,
+      [2] = 0,
+      [3] = "tostring",
+    },
+    [51] = {
+      [1] = 165,
+      [2] = 0,
+      [3] = "SxnEQHFlDbXihrr",
+    },
+    [52] = {
+      [1] = 12,
+      [2] = 0,
+      [3] = 0,
+      [4] = 2,
+    },
+    [53] = {
+      [1] = 48,
+      [2] = 0,
+      [3] = "print",
+    },
+    [54] = {
+      [1] = 23,
+      [2] = 0,
+      [3] = 1,
+      [4] = 0,
+    },
+    [55] = {
+      [1] = 19,
+      [2] = 0,
+      [3] = "MoonSec_StringsHiddenAttr",
+    },
+    [56] = {
+      [1] = 1,
+      [2] = 0,
+      [3] = "_aeUYdCnIFQqQ",
+    },
+    [57] = {
+      [1] = 26,
+      [2] = 0,
+      [3] = 59,
+      [4] = "This file was protected with MoonSec V3",
+    },
+    [58] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 59,
+    },
+    [59] = {
+      [1] = 27,
+      [2] = 0,
+      [3] = 1,
+      [4] = 0,
+    },
+    [60] = {
+      [1] = 30,
+      [2] = 0,
+      [3] = "game",
+    },
+    [61] = {
+      [1] = 113,
+      [2] = 0,
+      [3] = 0,
+      [4] = "GetService",
+    },
+    [62] = {
+      [1] = 22,
+      [2] = 2,
+      [3] = "HttpService",
+    },
+    [63] = {
+      [1] = 8,
+      [2] = 0,
+      [3] = 2,
+      [4] = 2,
+    },
+    [64] = {
+      [1] = 30,
+      [2] = 1,
+      [3] = "game",
+    },
+    [65] = {
+      [1] = 113,
+      [2] = 1,
+      [3] = 1,
+      [4] = "GetService",
+    },
+    [66] = {
+      [1] = 20,
+      [2] = 3,
+      [3] = "TeleportService",
+    },
+    [67] = {
+      [1] = 20,
+      [2] = 1,
+      [3] = 3,
+      [4] = 2,
+    },
+    [68] = {
+      [1] = 30,
+      [2] = 2,
+      [3] = "game",
+    },
+    [69] = {
+      [1] = 113,
+      [2] = 2,
+      [3] = 2,
+      [4] = "GetService",
+    },
+    [70] = {
+      [1] = 29,
+      [2] = 4,
+      [3] = "Players",
+    },
+    [71] = {
+      [1] = 29,
+      [2] = 2,
+      [3] = 4,
+      [4] = 2,
+    },
+    [72] = {
+      [1] = 165,
+      [2] = 3,
+      [3] = "game",
+    },
+    [73] = {
+      [1] = 1,
+      [2] = 3,
+      [3] = 3,
+      [4] = "JobId",
+    },
+    [74] = {
+      [1] = 165,
+      [2] = 4,
+      [3] = "game",
+    },
+    [75] = {
+      [1] = 24,
+      [2] = 4,
+      [3] = 4,
+      [4] = "PlaceId",
+    },
+    [76] = {
+      [1] = 165,
+      [2] = 5,
+      [3] = "os",
+    },
+    [77] = {
+      [1] = 20,
+      [2] = 5,
+      [3] = 5,
+      [4] = "time",
+    },
+    [78] = {
+      [1] = 194,
+      [2] = 5,
+      [3] = 1,
+      [4] = 2,
+    },
+    [79] = {
+      [1] = 165,
+      [2] = 6,
+      [3] = "math",
+    },
+    [80] = {
+      [1] = 4,
+      [2] = 6,
+      [3] = 6,
+      [4] = "max",
+    },
+    [81] = {
+      [1] = 188,
+      [2] = 7,
+      [3] = 1,
+    },
+    [82] = {
+      [1] = 30,
+      [2] = 8,
+      [3] = "getgenv",
+    },
+    [83] = {
+      [1] = 194,
+      [2] = 8,
+      [3] = 1,
+      [4] = 2,
+    },
+    [84] = {
+      [1] = 88,
+      [2] = 8,
+      [3] = 8,
+      [4] = "AutofarmSettings",
+    },
+    [85] = {
+      [1] = 39,
+      [2] = 8,
+      [3] = 8,
+      [4] = "Serverhop",
+    },
+    [86] = {
+      [1] = 4,
+      [2] = 8,
+      [3] = 8,
+      [4] = "Time",
+    },
+    [87] = {
+      [1] = 14,
+      [2] = 6,
+      [3] = 8,
+      [4] = 2,
+    },
+    [88] = {
+      [1] = 29,
+      [2] = 6,
+      [3] = 6,
+      [4] = 60,
+    },
+    [89] = {
+      [1] = 15,
+      [2] = 7,
+      [3] = 0,
+      [4] = 0,
+    },
+    [90] = {
+      [1] = 209,
+      [2] = 8,
+      [3] = 10,
+      [4] = 1,
+    },
+    [91] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 2,
+      [4] = 0,
+    },
+    [92] = {
+      [1] = 209,
+      [2] = 9,
+      [3] = 28,
+      [4] = 3,
+    },
+    [93] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 0,
+      [4] = 0,
+    },
+    [94] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 4,
+      [4] = 0,
+    },
+    [95] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 3,
+      [4] = 0,
+    },
+    [96] = {
+      [1] = 209,
+      [2] = 10,
+      [3] = 26,
+      [4] = 6,
+    },
+    [97] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 7,
+      [4] = 0,
+    },
+    [98] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 9,
+      [4] = 0,
+    },
+    [99] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 1,
+      [4] = 0,
+    },
+    [100] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 4,
+      [4] = 0,
+    },
+    [101] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 2,
+      [4] = 0,
+    },
+    [102] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 5,
+      [4] = 0,
+    },
+    [103] = {
+      [1] = 209,
+      [2] = 11,
+      [3] = 29,
+      [4] = 3,
+    },
+    [104] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 8,
+      [4] = 0,
+    },
+    [105] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 10,
+      [4] = 0,
+    },
+    [106] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 2,
+      [4] = 0,
+    },
+    [107] = {
+      [1] = 209,
+      [2] = 12,
+      [3] = 12,
+      [4] = 3,
+    },
+    [108] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 5,
+      [4] = 0,
+    },
+    [109] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 6,
+      [4] = 0,
+    },
+    [110] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 10,
+      [4] = 0,
+    },
+    [111] = {
+      [1] = 256,
+      [2] = 13,
+      [3] = "getgenv",
+    },
+    [112] = {
+      [1] = 15,
+      [2] = 13,
+      [3] = 1,
+      [4] = 2,
+    },
+    [113] = {
+      [1] = 10,
+      [2] = 13,
+      [3] = 13,
+      [4] = "AutofarmSettings",
+    },
+    [114] = {
+      [1] = 2,
+      [2] = 13,
+      [3] = 13,
+      [4] = "Serverhop",
+    },
+    [115] = {
+      [1] = 4,
+      [2] = 13,
+      [3] = 13,
+      [4] = "Enabled",
+    },
+    [116] = {
+      [1] = 4,
+      [2] = 13,
+      [3] = 118,
+      [4] = 1,
+    },
+    [117] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 118,
+    },
+    [118] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 123,
+    },
+    [119] = {
+      [1] = 242,
+      [2] = 13,
+      [3] = 11,
+      [4] = 0,
+    },
+    [120] = {
+      [1] = 20,
+      [2] = 13,
+      [3] = 1,
+      [4] = 1,
+    },
+    [121] = {
+      [1] = 30,
+      [2] = 13,
+      [3] = "spawn",
+    },
+    [122] = {
+      [1] = 242,
+      [2] = 14,
+      [3] = 12,
+      [4] = 0,
+    },
+    [123] = {
+      [1] = 104,
+      [2] = 13,
+      [3] = 2,
+      [4] = 1,
+    },
+    [124] = {
+      [1] = 133,
+      [2] = 0,
+      [3] = 0,
+      [4] = 0,
+    },
+    [125] = {
+      [1] = 8,
+      [2] = 0,
+      [3] = "setfpscap",
+    },
+    [126] = {
+      [1] = 13,
+      [2] = 0,
+      [3] = 128,
+      [4] = 1,
+    },
+    [127] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 128,
+    },
+    [128] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 134,
+    },
+    [129] = {
+      [1] = 30,
+      [2] = 0,
+      [3] = "setfpscap",
+    },
+    [130] = {
+      [1] = 156,
+      [2] = 1,
+      [3] = "getgenv",
+    },
+    [131] = {
+      [1] = 18,
+      [2] = 1,
+      [3] = 1,
+      [4] = 2,
+    },
+    [132] = {
+      [1] = 8,
+      [2] = 1,
+      [3] = 1,
+      [4] = "AutofarmSettings",
+    },
+    [133] = {
+      [1] = 24,
+      [2] = 1,
+      [3] = 1,
+      [4] = "Fps",
+    },
+    [134] = {
+      [1] = 6,
+      [2] = 0,
+      [3] = 2,
+      [4] = 1,
+    },
+    [135] = {
+      [1] = 30,
+      [2] = 0,
+      [3] = "pairs",
+    },
+    [136] = {
+      [1] = 135,
+      [2] = 1,
+      [3] = "getconnections",
+    },
+    [137] = {
+      [1] = 25,
+      [2] = 2,
+      [3] = "game",
+    },
+    [138] = {
+      [1] = 2,
+      [2] = 2,
+      [3] = 2,
+      [4] = "GetService",
+    },
+    [139] = {
+      [1] = 26,
+      [2] = 4,
+      [3] = "Players",
+    },
+    [140] = {
+      [1] = 12,
+      [2] = 2,
+      [3] = 4,
+      [4] = 2,
+    },
+    [141] = {
+      [1] = 3,
+      [2] = 2,
+      [3] = 2,
+      [4] = "LocalPlayer",
+    },
+    [142] = {
+      [1] = 1,
+      [2] = 2,
+      [3] = 2,
+      [4] = "Idled",
+    },
+    [143] = {
+      [1] = 251,
+      [2] = 1,
+      [3] = 2,
+      [4] = 0,
+    },
+    [144] = {
+      [1] = 56,
+      [2] = 0,
+      [3] = 0,
+      [4] = 2,
+    },
+    [145] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 147,
+    },
+    [146] = {
+      [1] = 228,
+      [2] = 5,
+      [3] = 4,
+      [4] = "Disable",
+    },
+    [147] = {
+      [1] = 104,
+      [2] = 5,
+      [3] = 2,
+      [4] = 1,
+    },
+    [148] = {
+      [1] = 25,
+      [2] = 0,
+      [3] = 145,
+      [4] = 2,
+    },
+    [149] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 145,
+    },
+    [150] = {
+      [1] = 30,
+      [2] = 0,
+      [3] = "Instance",
+    },
+    [151] = {
+      [1] = 88,
+      [2] = 0,
+      [3] = 0,
+      [4] = "new",
+    },
+    [152] = {
+      [1] = 188,
+      [2] = 1,
+      [3] = "ScreenGui",
+    },
+    [153] = {
+      [1] = 52,
+      [2] = 0,
+      [3] = 2,
+      [4] = 2,
+    },
+    [154] = {
+      [1] = 144,
+      [2] = 0,
+      [3] = "ResetOnSpawn",
+      [4] = false,
+    },
+    [155] = {
+      [1] = 232,
+      [2] = 1,
+      [3] = "Instance",
+    },
+    [156] = {
+      [1] = 14,
+      [2] = 1,
+      [3] = 1,
+      [4] = "new",
+    },
+    [157] = {
+      [1] = 22,
+      [2] = 2,
+      [3] = "Frame",
+    },
+    [158] = {
+      [1] = 27,
+      [2] = 1,
+      [3] = 2,
+      [4] = 2,
+    },
+    [159] = {
+      [1] = 4,
+      [2] = 2,
+      [3] = "Instance",
+    },
+    [160] = {
+      [1] = 9,
+      [2] = 2,
+      [3] = 2,
+      [4] = "new",
+    },
+    [161] = {
+      [1] = 1,
+      [2] = 3,
+      [3] = "Frame",
+    },
+    [162] = {
+      [1] = 52,
+      [2] = 2,
+      [3] = 2,
+      [4] = 2,
+    },
+    [163] = {
+      [1] = 232,
+      [2] = 3,
+      [3] = "Instance",
+    },
+    [164] = {
+      [1] = 29,
+      [2] = 3,
+      [3] = 3,
+      [4] = "new",
+    },
+    [165] = {
+      [1] = 22,
+      [2] = 4,
+      [3] = "UICorner",
+    },
+    [166] = {
+      [1] = 23,
+      [2] = 3,
+      [3] = 2,
+      [4] = 2,
+    },
+    [167] = {
+      [1] = 29,
+      [2] = 4,
+      [3] = "Instance",
+    },
+    [168] = {
+      [1] = 20,
+      [2] = 4,
+      [3] = 4,
+      [4] = "new",
+    },
+    [169] = {
+      [1] = 16,
+      [2] = 5,
+      [3] = "Frame",
+    },
+    [170] = {
+      [1] = 52,
+      [2] = 4,
+      [3] = 2,
+      [4] = 2,
+    },
+    [171] = {
+      [1] = 232,
+      [2] = 5,
+      [3] = "Instance",
+    },
+    [172] = {
+      [1] = 12,
+      [2] = 5,
+      [3] = 5,
+      [4] = "new",
+    },
+    [173] = {
+      [1] = 11,
+      [2] = 6,
+      [3] = "UICorner",
+    },
+    [174] = {
+      [1] = 18,
+      [2] = 5,
+      [3] = 2,
+      [4] = 2,
+    },
+    [175] = {
+      [1] = 19,
+      [2] = 6,
+      [3] = "Instance",
+    },
+    [176] = {
+      [1] = 6,
+      [2] = 6,
+      [3] = 6,
+      [4] = "new",
+    },
+    [177] = {
+      [1] = 15,
+      [2] = 7,
+      [3] = "TextLabel",
+    },
+    [178] = {
+      [1] = 52,
+      [2] = 6,
+      [3] = 2,
+      [4] = 2,
+    },
+    [179] = {
+      [1] = 232,
+      [2] = 7,
+      [3] = "Instance",
+    },
+    [180] = {
+      [1] = 29,
+      [2] = 7,
+      [3] = 7,
+      [4] = "new",
+    },
+    [181] = {
+      [1] = 27,
+      [2] = 8,
+      [3] = "TextLabel",
+    },
+    [182] = {
+      [1] = 12,
+      [2] = 7,
+      [3] = 2,
+      [4] = 2,
+    },
+    [183] = {
+      [1] = 24,
+      [2] = 8,
+      [3] = "Instance",
+    },
+    [184] = {
+      [1] = 24,
+      [2] = 8,
+      [3] = 8,
+      [4] = "new",
+    },
+    [185] = {
+      [1] = 21,
+      [2] = 9,
+      [3] = "UIGradient",
+    },
+    [186] = {
+      [1] = 52,
+      [2] = 8,
+      [3] = 2,
+      [4] = 2,
+    },
+    [187] = {
+      [1] = 232,
+      [2] = 9,
+      [3] = "Instance",
+    },
+    [188] = {
+      [1] = 10,
+      [2] = 9,
+      [3] = 9,
+      [4] = "new",
+    },
+    [189] = {
+      [1] = 27,
+      [2] = 10,
+      [3] = "TextLabel",
+    },
+    [190] = {
+      [1] = 13,
+      [2] = 9,
+      [3] = 2,
+      [4] = 2,
+    },
+    [191] = {
+      [1] = 28,
+      [2] = 10,
+      [3] = "Instance",
+    },
+    [192] = {
+      [1] = 9,
+      [2] = 10,
+      [3] = 10,
+      [4] = "new",
+    },
+    [193] = {
+      [1] = 4,
+      [2] = 11,
+      [3] = "TextLabel",
+    },
+    [194] = {
+      [1] = 52,
+      [2] = 10,
+      [3] = 2,
+      [4] = 2,
+    },
+    [195] = {
+      [1] = 232,
+      [2] = 11,
+      [3] = "Instance",
+    },
+    [196] = {
+      [1] = 27,
+      [2] = 11,
+      [3] = 11,
+      [4] = "new",
+    },
+    [197] = {
+      [1] = 20,
+      [2] = 12,
+      [3] = "UIGradient",
+    },
+    [198] = {
+      [1] = 25,
+      [2] = 11,
+      [3] = 2,
+      [4] = 2,
+    },
+    [199] = {
+      [1] = 18,
+      [2] = 12,
+      [3] = "Instance",
+    },
+    [200] = {
+      [1] = 26,
+      [2] = 12,
+      [3] = 12,
+      [4] = "new",
+    },
+    [201] = {
+      [1] = 25,
+      [2] = 13,
+      [3] = "TextLabel",
+    },
+    [202] = {
+      [1] = 52,
+      [2] = 12,
+      [3] = 2,
+      [4] = 2,
+    },
+    [203] = {
+      [1] = 232,
+      [2] = 13,
+      [3] = "Instance",
+    },
+    [204] = {
+      [1] = 4,
+      [2] = 13,
+      [3] = 13,
+      [4] = "new",
+    },
+    [205] = {
+      [1] = 24,
+      [2] = 14,
+      [3] = "TextLabel",
+    },
+    [206] = {
+      [1] = 13,
+      [2] = 13,
+      [3] = 2,
+      [4] = 2,
+    },
+    [207] = {
+      [1] = 4,
+      [2] = 14,
+      [3] = "Instance",
+    },
+    [208] = {
+      [1] = 7,
+      [2] = 14,
+      [3] = 14,
+      [4] = "new",
+    },
+    [209] = {
+      [1] = 12,
+      [2] = 15,
+      [3] = "TextLabel",
+    },
+    [210] = {
+      [1] = 52,
+      [2] = 14,
+      [3] = 2,
+      [4] = 2,
+    },
+    [211] = {
+      [1] = 232,
+      [2] = 15,
+      [3] = "Instance",
+    },
+    [212] = {
+      [1] = 18,
+      [2] = 15,
+      [3] = 15,
+      [4] = "new",
+    },
+    [213] = {
+      [1] = 28,
+      [2] = 16,
+      [3] = "TextLabel",
+    },
+    [214] = {
+      [1] = 3,
+      [2] = 15,
+      [3] = 2,
+      [4] = 2,
+    },
+    [215] = {
+      [1] = 29,
+      [2] = 16,
+      [3] = "Instance",
+    },
+    [216] = {
+      [1] = 4,
+      [2] = 16,
+      [3] = 16,
+      [4] = "new",
+    },
+    [217] = {
+      [1] = 21,
+      [2] = 17,
+      [3] = "TextLabel",
+    },
+    [218] = {
+      [1] = 52,
+      [2] = 16,
+      [3] = 2,
+      [4] = 2,
+    },
+    [219] = {
+      [1] = 232,
+      [2] = 17,
+      [3] = "Instance",
+    },
+    [220] = {
+      [1] = 27,
+      [2] = 17,
+      [3] = 17,
+      [4] = "new",
+    },
+    [221] = {
+      [1] = 10,
+      [2] = 18,
+      [3] = "ImageLabel",
+    },
+    [222] = {
+      [1] = 8,
+      [2] = 17,
+      [3] = 2,
+      [4] = 2,
+    },
+    [223] = {
+      [1] = 13,
+      [2] = 18,
+      [3] = "Instance",
+    },
+    [224] = {
+      [1] = 15,
+      [2] = 18,
+      [3] = 18,
+      [4] = "new",
+    },
+    [225] = {
+      [1] = 24,
+      [2] = 19,
+      [3] = "TextLabel",
+    },
+    [226] = {
+      [1] = 52,
+      [2] = 18,
+      [3] = 2,
+      [4] = 2,
+    },
+    [227] = {
+      [1] = 232,
+      [2] = 19,
+      [3] = "Instance",
+    },
+    [228] = {
+      [1] = 9,
+      [2] = 19,
+      [3] = 19,
+      [4] = "new",
+    },
+    [229] = {
+      [1] = 20,
+      [2] = 20,
+      [3] = "TextLabel",
+    },
+    [230] = {
+      [1] = 23,
+      [2] = 19,
+      [3] = 2,
+      [4] = 2,
+    },
+    [231] = {
+      [1] = 8,
+      [2] = 20,
+      [3] = "Instance",
+    },
+    [232] = {
+      [1] = 19,
+      [2] = 20,
+      [3] = 20,
+      [4] = "new",
+    },
+    [233] = {
+      [1] = 3,
+      [2] = 21,
+      [3] = "TextLabel",
+    },
+    [234] = {
+      [1] = 52,
+      [2] = 20,
+      [3] = 2,
+      [4] = 2,
+    },
+    [235] = {
+      [1] = 232,
+      [2] = 21,
+      [3] = "Instance",
+    },
+    [236] = {
+      [1] = 8,
+      [2] = 21,
+      [3] = 21,
+      [4] = "new",
+    },
+    [237] = {
+      [1] = 19,
+      [2] = 22,
+      [3] = "UIGradient",
+    },
+    [238] = {
+      [1] = 15,
+      [2] = 21,
+      [3] = 2,
+      [4] = 2,
+    },
+    [239] = {
+      [1] = 15,
+      [2] = 22,
+      [3] = "Instance",
+    },
+    [240] = {
+      [1] = 21,
+      [2] = 22,
+      [3] = 22,
+      [4] = "new",
+    },
+    [241] = {
+      [1] = 11,
+      [2] = 23,
+      [3] = "ImageLabel",
+    },
+    [242] = {
+      [1] = 52,
+      [2] = 22,
+      [3] = 2,
+      [4] = 2,
+    },
+    [243] = {
+      [1] = 165,
+      [2] = 23,
+      [3] = "Instance",
+    },
+    [244] = {
+      [1] = 19,
+      [2] = 23,
+      [3] = 23,
+      [4] = "new",
+    },
+    [245] = {
+      [1] = 188,
+      [2] = 24,
+      [3] = "UICorner",
+    },
+    [246] = {
+      [1] = 52,
+      [2] = 23,
+      [3] = 2,
+      [4] = 2,
+    },
+    [247] = {
+      [1] = 130,
+      [2] = 24,
+      [3] = "game",
+    },
+    [248] = {
+      [1] = 10,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Players",
+    },
+    [249] = {
+      [1] = 1,
+      [2] = 24,
+      [3] = 24,
+      [4] = "LocalPlayer",
+    },
+    [250] = {
+      [1] = 15,
+      [2] = 24,
+      [3] = 24,
+      [4] = "WaitForChild",
+    },
+    [251] = {
+      [1] = 20,
+      [2] = 26,
+      [3] = "PlayerGui",
+    },
+    [252] = {
+      [1] = 19,
+      [2] = 24,
+      [3] = 26,
+      [4] = 2,
+    },
+    [253] = {
+      [1] = 5,
+      [2] = 0,
+      [3] = "Parent",
+      [4] = 24,
+    },
+    [254] = {
+      [1] = 165,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [255] = {
+      [1] = 9,
+      [2] = 24,
+      [3] = 24,
+      [4] = "ZIndexBehavior",
+    },
+    [256] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Sibling",
+    },
+    [257] = {
+      [1] = 128,
+      [2] = 0,
+      [3] = "ZIndexBehavior",
+      [4] = 24,
+    },
+    [258] = {
+      [1] = 144,
+      [2] = 0,
+      [3] = "IgnoreGuiInset",
+      [4] = true,
+    },
+    [259] = {
+      [1] = 279,
+      [2] = 1,
+      [3] = "Parent",
+      [4] = 0,
+    },
+    [260] = {
+      [1] = 20,
+      [2] = 24,
+      [3] = "Color3",
+    },
+    [261] = {
+      [1] = 19,
+      [2] = 24,
+      [3] = 24,
+      [4] = "fromRGB",
+    },
+    [262] = {
+      [1] = 9,
+      [2] = 25,
+      [3] = 15,
+    },
+    [263] = {
+      [1] = 5,
+      [2] = 26,
+      [3] = 15,
+    },
+    [264] = {
+      [1] = 10,
+      [2] = 27,
+      [3] = 15,
+    },
+    [265] = {
+      [1] = 27,
+      [2] = 24,
+      [3] = 27,
+      [4] = 2,
+    },
+    [266] = {
+      [1] = 279,
+      [2] = 1,
+      [3] = "BackgroundColor3",
+      [4] = 24,
+    },
+    [267] = {
+      [1] = 6,
+      [2] = 24,
+      [3] = "Color3",
+    },
+    [268] = {
+      [1] = 26,
+      [2] = 24,
+      [3] = 24,
+      [4] = "fromRGB",
+    },
+    [269] = {
+      [1] = 6,
+      [2] = 25,
+      [3] = 0,
+    },
+    [270] = {
+      [1] = 15,
+      [2] = 26,
+      [3] = 0,
+    },
+    [271] = {
+      [1] = 13,
+      [2] = 27,
+      [3] = 0,
+    },
+    [272] = {
+      [1] = 18,
+      [2] = 24,
+      [3] = 27,
+      [4] = 2,
+    },
+    [273] = {
+      [1] = 18,
+      [2] = 1,
+      [3] = "BorderColor3",
+      [4] = 24,
+    },
+    [274] = {
+      [1] = 23,
+      [2] = 1,
+      [3] = "BorderSizePixel",
+      [4] = 0,
+    },
+    [275] = {
+      [1] = 22,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [276] = {
+      [1] = 13,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [277] = {
+      [1] = 19,
+      [2] = 25,
+      [3] = 1,
+    },
+    [278] = {
+      [1] = 26,
+      [2] = 26,
+      [3] = 0,
+    },
+    [279] = {
+      [1] = 9,
+      [2] = 27,
+      [3] = 1,
+    },
+    [280] = {
+      [1] = 188,
+      [2] = 28,
+      [3] = 0,
+    },
+    [281] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [282] = {
+      [1] = 128,
+      [2] = 1,
+      [3] = "Size",
+      [4] = 24,
+    },
+    [283] = {
+      [1] = 279,
+      [2] = 2,
+      [3] = "Parent",
+      [4] = 1,
+    },
+    [284] = {
+      [1] = 12,
+      [2] = 24,
+      [3] = "Color3",
+    },
+    [285] = {
+      [1] = 20,
+      [2] = 24,
+      [3] = 24,
+      [4] = "fromRGB",
+    },
+    [286] = {
+      [1] = 17,
+      [2] = 25,
+      [3] = 48,
+    },
+    [287] = {
+      [1] = 12,
+      [2] = 26,
+      [3] = 48,
+    },
+    [288] = {
+      [1] = 22,
+      [2] = 27,
+      [3] = 48,
+    },
+    [289] = {
+      [1] = 8,
+      [2] = 24,
+      [3] = 27,
+      [4] = 2,
+    },
+    [290] = {
+      [1] = 279,
+      [2] = 2,
+      [3] = "BackgroundColor3",
+      [4] = 24,
+    },
+    [291] = {
+      [1] = 19,
+      [2] = 24,
+      [3] = "Color3",
+    },
+    [292] = {
+      [1] = 20,
+      [2] = 24,
+      [3] = 24,
+      [4] = "fromRGB",
+    },
+    [293] = {
+      [1] = 25,
+      [2] = 25,
+      [3] = 0,
+    },
+    [294] = {
+      [1] = 2,
+      [2] = 26,
+      [3] = 0,
+    },
+    [295] = {
+      [1] = 7,
+      [2] = 27,
+      [3] = 0,
+    },
+    [296] = {
+      [1] = 15,
+      [2] = 24,
+      [3] = 27,
+      [4] = 2,
+    },
+    [297] = {
+      [1] = 18,
+      [2] = 2,
+      [3] = "BorderColor3",
+      [4] = 24,
+    },
+    [298] = {
+      [1] = 20,
+      [2] = 2,
+      [3] = "BorderSizePixel",
+      [4] = 0,
+    },
+    [299] = {
+      [1] = 23,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [300] = {
+      [1] = 12,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [301] = {
+      [1] = 10,
+      [2] = 25,
+      [3] = 0.5,
+    },
+    [302] = {
+      [1] = 1,
+      [2] = 26,
+      [3] = -250,
+    },
+    [303] = {
+      [1] = 3,
+      [2] = 27,
+      [3] = 0.5,
+    },
+    [304] = {
+      [1] = 207,
+      [2] = 28,
+      [3] = -150,
+    },
+    [305] = {
+      [1] = 23,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [306] = {
+      [1] = 8,
+      [2] = 2,
+      [3] = "Position",
+      [4] = 24,
+    },
+    [307] = {
+      [1] = 27,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [308] = {
+      [1] = 20,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [309] = {
+      [1] = 20,
+      [2] = 25,
+      [3] = 0,
+    },
+    [310] = {
+      [1] = 11,
+      [2] = 26,
+      [3] = 500,
+    },
+    [311] = {
+      [1] = 257,
+      [2] = 27,
+      [3] = 0,
+    },
+    [312] = {
+      [1] = 25,
+      [2] = 28,
+      [3] = 300,
+    },
+    [313] = {
+      [1] = 18,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [314] = {
+      [1] = 27,
+      [2] = 2,
+      [3] = "Size",
+      [4] = 24,
+    },
+    [315] = {
+      [1] = 20,
+      [2] = 3,
+      [3] = "Parent",
+      [4] = 2,
+    },
+    [316] = {
+      [1] = 13,
+      [2] = 4,
+      [3] = "Parent",
+      [4] = 2,
+    },
+    [317] = {
+      [1] = 16,
+      [2] = 24,
+      [3] = "Color3",
+    },
+    [318] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "fromRGB",
+    },
+    [319] = {
+      [1] = 173,
+      [2] = 25,
+      [3] = 15,
+    },
+    [320] = {
+      [1] = 7,
+      [2] = 26,
+      [3] = 15,
+    },
+    [321] = {
+      [1] = 28,
+      [2] = 27,
+      [3] = 15,
+    },
+    [322] = {
+      [1] = 5,
+      [2] = 24,
+      [3] = 27,
+      [4] = 2,
+    },
+    [323] = {
+      [1] = 8,
+      [2] = 4,
+      [3] = "BackgroundColor3",
+      [4] = 24,
+    },
+    [324] = {
+      [1] = 26,
+      [2] = 24,
+      [3] = "Color3",
+    },
+    [325] = {
+      [1] = 22,
+      [2] = 24,
+      [3] = 24,
+      [4] = "fromRGB",
+    },
+    [326] = {
+      [1] = 188,
+      [2] = 25,
+      [3] = 0,
+    },
+    [327] = {
+      [1] = 211,
+      [2] = 26,
+      [3] = 0,
+    },
+    [328] = {
+      [1] = 28,
+      [2] = 27,
+      [3] = 0,
+    },
+    [329] = {
+      [1] = 15,
+      [2] = 24,
+      [3] = 27,
+      [4] = 2,
+    },
+    [330] = {
+      [1] = 24,
+      [2] = 4,
+      [3] = "BorderColor3",
+      [4] = 24,
+    },
+    [331] = {
+      [1] = 2,
+      [2] = 4,
+      [3] = "BorderSizePixel",
+      [4] = 0,
+    },
+    [332] = {
+      [1] = 23,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [333] = {
+      [1] = 21,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [334] = {
+      [1] = 73,
+      [2] = 25,
+      [3] = 0.003,
+    },
+    [335] = {
+      [1] = 24,
+      [2] = 26,
+      [3] = 0,
+    },
+    [336] = {
+      [1] = 22,
+      [2] = 27,
+      [3] = 0.006,
+    },
+    [337] = {
+      [1] = 7,
+      [2] = 28,
+      [3] = 0,
+    },
+    [338] = {
+      [1] = 10,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [339] = {
+      [1] = 12,
+      [2] = 4,
+      [3] = "Position",
+      [4] = 24,
+    },
+    [340] = {
+      [1] = 8,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [341] = {
+      [1] = 172,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [342] = {
+      [1] = 1,
+      [2] = 25,
+      [3] = 0,
+    },
+    [343] = {
+      [1] = 1,
+      [2] = 26,
+      [3] = 496,
+    },
+    [344] = {
+      [1] = 5,
+      [2] = 27,
+      [3] = 0,
+    },
+    [345] = {
+      [1] = 21,
+      [2] = 28,
+      [3] = 296,
+    },
+    [346] = {
+      [1] = 17,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [347] = {
+      [1] = 26,
+      [2] = 4,
+      [3] = "Size",
+      [4] = 24,
+    },
+    [348] = {
+      [1] = 261,
+      [2] = 5,
+      [3] = "Parent",
+      [4] = 4,
+    },
+    [349] = {
+      [1] = 15,
+      [2] = 6,
+      [3] = "Name",
+      [4] = "TotalBalance",
+    },
+    [350] = {
+      [1] = 10,
+      [2] = 6,
+      [3] = "Parent",
+      [4] = 4,
+    },
+    [351] = {
+      [1] = 16,
+      [2] = 6,
+      [3] = "BackgroundTransparency",
+      [4] = 1,
+    },
+    [352] = {
+      [1] = 1,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [353] = {
+      [1] = 10,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [354] = {
+      [1] = 20,
+      [2] = 25,
+      [3] = 0.05,
+    },
+    [355] = {
+      [1] = 173,
+      [2] = 26,
+      [3] = 0,
+    },
+    [356] = {
+      [1] = 26,
+      [2] = 27,
+      [3] = 0.068,
+    },
+    [357] = {
+      [1] = 24,
+      [2] = 28,
+      [3] = 0,
+    },
+    [358] = {
+      [1] = 8,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [359] = {
+      [1] = 15,
+      [2] = 6,
+      [3] = "Position",
+      [4] = 24,
+    },
+    [360] = {
+      [1] = 10,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [361] = {
+      [1] = 2,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [362] = {
+      [1] = 73,
+      [2] = 25,
+      [3] = 0,
+    },
+    [363] = {
+      [1] = 17,
+      [2] = 26,
+      [3] = 200,
+    },
+    [364] = {
+      [1] = 2,
+      [2] = 27,
+      [3] = 0,
+    },
+    [365] = {
+      [1] = 28,
+      [2] = 28,
+      [3] = 20,
+    },
+    [366] = {
+      [1] = 22,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [367] = {
+      [1] = 19,
+      [2] = 6,
+      [3] = "Size",
+      [4] = 24,
+    },
+    [368] = {
+      [1] = 16,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [369] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Font",
+    },
+    [370] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Highway",
+    },
+    [371] = {
+      [1] = 18,
+      [2] = 6,
+      [3] = "Font",
+      [4] = 24,
+    },
+    [372] = {
+      [1] = 22,
+      [2] = 6,
+      [3] = "Text",
+      [4] = "Balance:",
+    },
+    [373] = {
+      [1] = 27,
+      [2] = 24,
+      [3] = "Color3",
+    },
+    [374] = {
+      [1] = 11,
+      [2] = 24,
+      [3] = 24,
+      [4] = "fromRGB",
+    },
+    [375] = {
+      [1] = 1,
+      [2] = 25,
+      [3] = 136,
+    },
+    [376] = {
+      [1] = 8,
+      [2] = 26,
+      [3] = 136,
+    },
+    [377] = {
+      [1] = 28,
+      [2] = 27,
+      [3] = 136,
+    },
+    [378] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 27,
+      [4] = 2,
+    },
+    [379] = {
+      [1] = 128,
+      [2] = 6,
+      [3] = "TextColor3",
+      [4] = 24,
+    },
+    [380] = {
+      [1] = 286,
+      [2] = 6,
+      [3] = "TextSize",
+      [4] = 18,
+    },
+    [381] = {
+      [1] = 10,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [382] = {
+      [1] = 12,
+      [2] = 24,
+      [3] = 24,
+      [4] = "TextXAlignment",
+    },
+    [383] = {
+      [1] = 11,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Left",
+    },
+    [384] = {
+      [1] = 12,
+      [2] = 6,
+      [3] = "TextXAlignment",
+      [4] = 24,
+    },
+    [385] = {
+      [1] = 18,
+      [2] = 7,
+      [3] = "Name",
+      [4] = "Balance",
+    },
+    [386] = {
+      [1] = 10,
+      [2] = 7,
+      [3] = "Parent",
+      [4] = 4,
+    },
+    [387] = {
+      [1] = 144,
+      [2] = 7,
+      [3] = "BackgroundTransparency",
+      [4] = 1,
+    },
+    [388] = {
+      [1] = 200,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [389] = {
+      [1] = 1,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [390] = {
+      [1] = 13,
+      [2] = 25,
+      [3] = 0.048,
+    },
+    [391] = {
+      [1] = 19,
+      [2] = 26,
+      [3] = 0,
+    },
+    [392] = {
+      [1] = 11,
+      [2] = 27,
+      [3] = 0.135,
+    },
+    [393] = {
+      [1] = 8,
+      [2] = 28,
+      [3] = 0,
+    },
+    [394] = {
+      [1] = 6,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [395] = {
+      [1] = 170,
+      [2] = 7,
+      [3] = "Position",
+      [4] = 24,
+    },
+    [396] = {
+      [1] = 4,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [397] = {
+      [1] = 23,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [398] = {
+      [1] = 24,
+      [2] = 25,
+      [3] = 0,
+    },
+    [399] = {
+      [1] = 25,
+      [2] = 26,
+      [3] = 200,
+    },
+    [400] = {
+      [1] = 20,
+      [2] = 27,
+      [3] = 0,
+    },
+    [401] = {
+      [1] = 25,
+      [2] = 28,
+      [3] = 60,
+    },
+    [402] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [403] = {
+      [1] = 128,
+      [2] = 7,
+      [3] = "Size",
+      [4] = 24,
+    },
+    [404] = {
+      [1] = 165,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [405] = {
+      [1] = 12,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Font",
+    },
+    [406] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Highway",
+    },
+    [407] = {
+      [1] = 18,
+      [2] = 7,
+      [3] = "Font",
+      [4] = 24,
+    },
+    [408] = {
+      [1] = 22,
+      [2] = 7,
+      [3] = "Text",
+      [4] = "$???",
+    },
+    [409] = {
+      [1] = 2,
+      [2] = 24,
+      [3] = "Color3",
+    },
+    [410] = {
+      [1] = 3,
+      [2] = 24,
+      [3] = 24,
+      [4] = "fromRGB",
+    },
+    [411] = {
+      [1] = 14,
+      [2] = 25,
+      [3] = 136,
+    },
+    [412] = {
+      [1] = 3,
+      [2] = 26,
+      [3] = 136,
+    },
+    [413] = {
+      [1] = 20,
+      [2] = 27,
+      [3] = 136,
+    },
+    [414] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 27,
+      [4] = 2,
+    },
+    [415] = {
+      [1] = 128,
+      [2] = 7,
+      [3] = "TextColor3",
+      [4] = 24,
+    },
+    [416] = {
+      [1] = 144,
+      [2] = 7,
+      [3] = "TextSize",
+      [4] = 35,
+    },
+    [417] = {
+      [1] = 165,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [418] = {
+      [1] = 22,
+      [2] = 24,
+      [3] = 24,
+      [4] = "TextXAlignment",
+    },
+    [419] = {
+      [1] = 26,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Left",
+    },
+    [420] = {
+      [1] = 18,
+      [2] = 7,
+      [3] = "TextXAlignment",
+      [4] = 24,
+    },
+    [421] = {
+      [1] = 29,
+      [2] = 24,
+      [3] = "ColorSequence",
+    },
+    [422] = {
+      [1] = 4,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [423] = {
+      [1] = 1,
+      [2] = 25,
+      [3] = 3,
+      [4] = 0,
+    },
+    [424] = {
+      [1] = 13,
+      [2] = 26,
+      [3] = "ColorSequenceKeypoint",
+    },
+    [425] = {
+      [1] = 25,
+      [2] = 26,
+      [3] = 26,
+      [4] = "new",
+    },
+    [426] = {
+      [1] = 188,
+      [2] = 27,
+      [3] = 0,
+    },
+    [427] = {
+      [1] = 165,
+      [2] = 28,
+      [3] = "Color3",
+    },
+    [428] = {
+      [1] = 19,
+      [2] = 28,
+      [3] = 28,
+      [4] = "fromRGB",
+    },
+    [429] = {
+      [1] = 157,
+      [2] = 29,
+      [3] = 157,
+    },
+    [430] = {
+      [1] = 1,
+      [2] = 30,
+      [3] = 255,
+    },
+    [431] = {
+      [1] = 21,
+      [2] = 31,
+      [3] = 170,
+    },
+    [432] = {
+      [1] = 13,
+      [2] = 28,
+      [3] = 31,
+      [4] = 0,
+    },
+    [433] = {
+      [1] = 6,
+      [2] = 26,
+      [3] = 0,
+      [4] = 2,
+    },
+    [434] = {
+      [1] = 165,
+      [2] = 27,
+      [3] = "ColorSequenceKeypoint",
+    },
+    [435] = {
+      [1] = 22,
+      [2] = 27,
+      [3] = 27,
+      [4] = "new",
+    },
+    [436] = {
+      [1] = 188,
+      [2] = 28,
+      [3] = 0.5,
+    },
+    [437] = {
+      [1] = 165,
+      [2] = 29,
+      [3] = "Color3",
+    },
+    [438] = {
+      [1] = 26,
+      [2] = 29,
+      [3] = 29,
+      [4] = "fromRGB",
+    },
+    [439] = {
+      [1] = 157,
+      [2] = 30,
+      [3] = 105,
+    },
+    [440] = {
+      [1] = 17,
+      [2] = 31,
+      [3] = 175,
+    },
+    [441] = {
+      [1] = 20,
+      [2] = 32,
+      [3] = 102,
+    },
+    [442] = {
+      [1] = 2,
+      [2] = 29,
+      [3] = 32,
+      [4] = 0,
+    },
+    [443] = {
+      [1] = 29,
+      [2] = 27,
+      [3] = 0,
+      [4] = 2,
+    },
+    [444] = {
+      [1] = 165,
+      [2] = 28,
+      [3] = "ColorSequenceKeypoint",
+    },
+    [445] = {
+      [1] = 5,
+      [2] = 28,
+      [3] = 28,
+      [4] = "new",
+    },
+    [446] = {
+      [1] = 188,
+      [2] = 29,
+      [3] = 0.99,
+    },
+    [447] = {
+      [1] = 165,
+      [2] = 30,
+      [3] = "Color3",
+    },
+    [448] = {
+      [1] = 23,
+      [2] = 30,
+      [3] = 30,
+      [4] = "fromRGB",
+    },
+    [449] = {
+      [1] = 157,
+      [2] = 31,
+      [3] = 48,
+    },
+    [450] = {
+      [1] = 15,
+      [2] = 32,
+      [3] = 91,
+    },
+    [451] = {
+      [1] = 17,
+      [2] = 33,
+      [3] = 35,
+    },
+    [452] = {
+      [1] = 19,
+      [2] = 30,
+      [3] = 33,
+      [4] = 0,
+    },
+    [453] = {
+      [1] = 28,
+      [2] = 28,
+      [3] = 0,
+      [4] = 2,
+    },
+    [454] = {
+      [1] = 165,
+      [2] = 29,
+      [3] = "ColorSequenceKeypoint",
+    },
+    [455] = {
+      [1] = 5,
+      [2] = 29,
+      [3] = 29,
+      [4] = "new",
+    },
+    [456] = {
+      [1] = 188,
+      [2] = 30,
+      [3] = 1,
+    },
+    [457] = {
+      [1] = 165,
+      [2] = 31,
+      [3] = "Color3",
+    },
+    [458] = {
+      [1] = 12,
+      [2] = 31,
+      [3] = 31,
+      [4] = "fromRGB",
+    },
+    [459] = {
+      [1] = 188,
+      [2] = 32,
+      [3] = 95,
+    },
+    [460] = {
+      [1] = 188,
+      [2] = 33,
+      [3] = 180,
+    },
+    [461] = {
+      [1] = 278,
+      [2] = 34,
+      [3] = 69,
+    },
+    [462] = {
+      [1] = 25,
+      [2] = 31,
+      [3] = 34,
+      [4] = 0,
+    },
+    [463] = {
+      [1] = 1,
+      [2] = 29,
+      [3] = 0,
+      [4] = 0,
+    },
+    [464] = {
+      [1] = 27,
+      [2] = 25,
+      [3] = 0,
+      [4] = 1,
+    },
+    [465] = {
+      [1] = 52,
+      [2] = 24,
+      [3] = 2,
+      [4] = 2,
+    },
+    [466] = {
+      [1] = 47,
+      [2] = 8,
+      [3] = "Color",
+      [4] = 24,
+    },
+    [467] = {
+      [1] = 25,
+      [2] = 8,
+      [3] = "Rotation",
+      [4] = 90,
+    },
+    [468] = {
+      [1] = 22,
+      [2] = 8,
+      [3] = "Parent",
+      [4] = 7,
+    },
+    [469] = {
+      [1] = 2,
+      [2] = 9,
+      [3] = "Name",
+      [4] = "Profits",
+    },
+    [470] = {
+      [1] = 18,
+      [2] = 9,
+      [3] = "Parent",
+      [4] = 4,
+    },
+    [471] = {
+      [1] = 25,
+      [2] = 9,
+      [3] = "BackgroundTransparency",
+      [4] = 1,
+    },
+    [472] = {
+      [1] = 4,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [473] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [474] = {
+      [1] = 73,
+      [2] = 25,
+      [3] = 0.05,
+    },
+    [475] = {
+      [1] = 14,
+      [2] = 26,
+      [3] = 0,
+    },
+    [476] = {
+      [1] = 28,
+      [2] = 27,
+      [3] = 0.338,
+    },
+    [477] = {
+      [1] = 14,
+      [2] = 28,
+      [3] = 0,
+    },
+    [478] = {
+      [1] = 19,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [479] = {
+      [1] = 27,
+      [2] = 9,
+      [3] = "Position",
+      [4] = 24,
+    },
+    [480] = {
+      [1] = 26,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [481] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [482] = {
+      [1] = 73,
+      [2] = 25,
+      [3] = 0,
+    },
+    [483] = {
+      [1] = 16,
+      [2] = 26,
+      [3] = 200,
+    },
+    [484] = {
+      [1] = 1,
+      [2] = 27,
+      [3] = 0,
+    },
+    [485] = {
+      [1] = 20,
+      [2] = 28,
+      [3] = 20,
+    },
+    [486] = {
+      [1] = 27,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [487] = {
+      [1] = 25,
+      [2] = 9,
+      [3] = "Size",
+      [4] = 24,
+    },
+    [488] = {
+      [1] = 16,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [489] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Font",
+    },
+    [490] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Highway",
+    },
+    [491] = {
+      [1] = 18,
+      [2] = 9,
+      [3] = "Font",
+      [4] = 24,
+    },
+    [492] = {
+      [1] = 20,
+      [2] = 9,
+      [3] = "Text",
+      [4] = "Profits this session:",
+    },
+    [493] = {
+      [1] = 14,
+      [2] = 24,
+      [3] = "Color3",
+    },
+    [494] = {
+      [1] = 7,
+      [2] = 24,
+      [3] = 24,
+      [4] = "fromRGB",
+    },
+    [495] = {
+      [1] = 10,
+      [2] = 25,
+      [3] = 136,
+    },
+    [496] = {
+      [1] = 10,
+      [2] = 26,
+      [3] = 136,
+    },
+    [497] = {
+      [1] = 7,
+      [2] = 27,
+      [3] = 136,
+    },
+    [498] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 27,
+      [4] = 2,
+    },
+    [499] = {
+      [1] = 128,
+      [2] = 9,
+      [3] = "TextColor3",
+      [4] = 24,
+    },
+    [500] = {
+      [1] = 286,
+      [2] = 9,
+      [3] = "TextSize",
+      [4] = 18,
+    },
+    [501] = {
+      [1] = 9,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [502] = {
+      [1] = 15,
+      [2] = 24,
+      [3] = 24,
+      [4] = "TextXAlignment",
+    },
+    [503] = {
+      [1] = 21,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Left",
+    },
+    [504] = {
+      [1] = 4,
+      [2] = 9,
+      [3] = "TextXAlignment",
+      [4] = 24,
+    },
+    [505] = {
+      [1] = 21,
+      [2] = 10,
+      [3] = "Name",
+      [4] = "ProfitAmount",
+    },
+    [506] = {
+      [1] = 14,
+      [2] = 10,
+      [3] = "Parent",
+      [4] = 4,
+    },
+    [507] = {
+      [1] = 144,
+      [2] = 10,
+      [3] = "BackgroundTransparency",
+      [4] = 1,
+    },
+    [508] = {
+      [1] = 200,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [509] = {
+      [1] = 5,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [510] = {
+      [1] = 17,
+      [2] = 25,
+      [3] = 0.05,
+    },
+    [511] = {
+      [1] = 24,
+      [2] = 26,
+      [3] = 0,
+    },
+    [512] = {
+      [1] = 1,
+      [2] = 27,
+      [3] = 0.405,
+    },
+    [513] = {
+      [1] = 19,
+      [2] = 28,
+      [3] = 0,
+    },
+    [514] = {
+      [1] = 20,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [515] = {
+      [1] = 170,
+      [2] = 10,
+      [3] = "Position",
+      [4] = 24,
+    },
+    [516] = {
+      [1] = 13,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [517] = {
+      [1] = 24,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [518] = {
+      [1] = 3,
+      [2] = 25,
+      [3] = 0,
+    },
+    [519] = {
+      [1] = 16,
+      [2] = 26,
+      [3] = 200,
+    },
+    [520] = {
+      [1] = 11,
+      [2] = 27,
+      [3] = 0,
+    },
+    [521] = {
+      [1] = 26,
+      [2] = 28,
+      [3] = 70,
+    },
+    [522] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [523] = {
+      [1] = 128,
+      [2] = 10,
+      [3] = "Size",
+      [4] = 24,
+    },
+    [524] = {
+      [1] = 165,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [525] = {
+      [1] = 20,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Font",
+    },
+    [526] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Highway",
+    },
+    [527] = {
+      [1] = 18,
+      [2] = 10,
+      [3] = "Font",
+      [4] = 24,
+    },
+    [528] = {
+      [1] = 4,
+      [2] = 10,
+      [3] = "Text",
+      [4] = "$???",
+    },
+    [529] = {
+      [1] = 17,
+      [2] = 24,
+      [3] = "Color3",
+    },
+    [530] = {
+      [1] = 14,
+      [2] = 24,
+      [3] = 24,
+      [4] = "fromRGB",
+    },
+    [531] = {
+      [1] = 13,
+      [2] = 25,
+      [3] = 136,
+    },
+    [532] = {
+      [1] = 8,
+      [2] = 26,
+      [3] = 136,
+    },
+    [533] = {
+      [1] = 28,
+      [2] = 27,
+      [3] = 136,
+    },
+    [534] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 27,
+      [4] = 2,
+    },
+    [535] = {
+      [1] = 128,
+      [2] = 10,
+      [3] = "TextColor3",
+      [4] = 24,
+    },
+    [536] = {
+      [1] = 144,
+      [2] = 10,
+      [3] = "TextSize",
+      [4] = 35,
+    },
+    [537] = {
+      [1] = 165,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [538] = {
+      [1] = 28,
+      [2] = 24,
+      [3] = 24,
+      [4] = "TextXAlignment",
+    },
+    [539] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Left",
+    },
+    [540] = {
+      [1] = 128,
+      [2] = 10,
+      [3] = "TextXAlignment",
+      [4] = 24,
+    },
+    [541] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 8,
+      [4] = "Color",
+    },
+    [542] = {
+      [1] = 47,
+      [2] = 11,
+      [3] = "Color",
+      [4] = 24,
+    },
+    [543] = {
+      [1] = 20,
+      [2] = 11,
+      [3] = "Rotation",
+      [4] = 90,
+    },
+    [544] = {
+      [1] = 11,
+      [2] = 11,
+      [3] = "Parent",
+      [4] = 10,
+    },
+    [545] = {
+      [1] = 19,
+      [2] = 12,
+      [3] = "Name",
+      [4] = "Account",
+    },
+    [546] = {
+      [1] = 25,
+      [2] = 12,
+      [3] = "Parent",
+      [4] = 4,
+    },
+    [547] = {
+      [1] = 27,
+      [2] = 12,
+      [3] = "BackgroundTransparency",
+      [4] = 1,
+    },
+    [548] = {
+      [1] = 8,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [549] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [550] = {
+      [1] = 73,
+      [2] = 25,
+      [3] = 0.05,
+    },
+    [551] = {
+      [1] = 4,
+      [2] = 26,
+      [3] = 0,
+    },
+    [552] = {
+      [1] = 21,
+      [2] = 27,
+      [3] = 0.642,
+    },
+    [553] = {
+      [1] = 12,
+      [2] = 28,
+      [3] = 0,
+    },
+    [554] = {
+      [1] = 26,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [555] = {
+      [1] = 3,
+      [2] = 12,
+      [3] = "Position",
+      [4] = 24,
+    },
+    [556] = {
+      [1] = 13,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [557] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [558] = {
+      [1] = 73,
+      [2] = 25,
+      [3] = 0,
+    },
+    [559] = {
+      [1] = 8,
+      [2] = 26,
+      [3] = 200,
+    },
+    [560] = {
+      [1] = 5,
+      [2] = 27,
+      [3] = 0,
+    },
+    [561] = {
+      [1] = 18,
+      [2] = 28,
+      [3] = 20,
+    },
+    [562] = {
+      [1] = 15,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [563] = {
+      [1] = 1,
+      [2] = 12,
+      [3] = "Size",
+      [4] = 24,
+    },
+    [564] = {
+      [1] = 20,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [565] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Font",
+    },
+    [566] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Highway",
+    },
+    [567] = {
+      [1] = 18,
+      [2] = 12,
+      [3] = "Font",
+      [4] = 24,
+    },
+    [568] = {
+      [1] = 18,
+      [2] = 12,
+      [3] = "Text",
+      [4] = "Account:",
+    },
+    [569] = {
+      [1] = 11,
+      [2] = 24,
+      [3] = "Color3",
+    },
+    [570] = {
+      [1] = 11,
+      [2] = 24,
+      [3] = 24,
+      [4] = "fromRGB",
+    },
+    [571] = {
+      [1] = 7,
+      [2] = 25,
+      [3] = 136,
+    },
+    [572] = {
+      [1] = 20,
+      [2] = 26,
+      [3] = 136,
+    },
+    [573] = {
+      [1] = 29,
+      [2] = 27,
+      [3] = 136,
+    },
+    [574] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 27,
+      [4] = 2,
+    },
+    [575] = {
+      [1] = 128,
+      [2] = 12,
+      [3] = "TextColor3",
+      [4] = 24,
+    },
+    [576] = {
+      [1] = 286,
+      [2] = 12,
+      [3] = "TextSize",
+      [4] = 18,
+    },
+    [577] = {
+      [1] = 2,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [578] = {
+      [1] = 16,
+      [2] = 24,
+      [3] = 24,
+      [4] = "TextXAlignment",
+    },
+    [579] = {
+      [1] = 2,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Left",
+    },
+    [580] = {
+      [1] = 4,
+      [2] = 12,
+      [3] = "TextXAlignment",
+      [4] = 24,
+    },
+    [581] = {
+      [1] = 12,
+      [2] = 13,
+      [3] = "Name",
+      [4] = "Username",
+    },
+    [582] = {
+      [1] = 22,
+      [2] = 13,
+      [3] = "Parent",
+      [4] = 4,
+    },
+    [583] = {
+      [1] = 144,
+      [2] = 13,
+      [3] = "BackgroundTransparency",
+      [4] = 1,
+    },
+    [584] = {
+      [1] = 200,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [585] = {
+      [1] = 2,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [586] = {
+      [1] = 28,
+      [2] = 25,
+      [3] = 0.05,
+    },
+    [587] = {
+      [1] = 12,
+      [2] = 26,
+      [3] = 0,
+    },
+    [588] = {
+      [1] = 5,
+      [2] = 27,
+      [3] = 0.709,
+    },
+    [589] = {
+      [1] = 4,
+      [2] = 28,
+      [3] = 0,
+    },
+    [590] = {
+      [1] = 28,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [591] = {
+      [1] = 170,
+      [2] = 13,
+      [3] = "Position",
+      [4] = 24,
+    },
+    [592] = {
+      [1] = 15,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [593] = {
+      [1] = 16,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [594] = {
+      [1] = 29,
+      [2] = 25,
+      [3] = 0,
+    },
+    [595] = {
+      [1] = 5,
+      [2] = 26,
+      [3] = 200,
+    },
+    [596] = {
+      [1] = 3,
+      [2] = 27,
+      [3] = 0,
+    },
+    [597] = {
+      [1] = 16,
+      [2] = 28,
+      [3] = 30,
+    },
+    [598] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [599] = {
+      [1] = 128,
+      [2] = 13,
+      [3] = "Size",
+      [4] = 24,
+    },
+    [600] = {
+      [1] = 165,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [601] = {
+      [1] = 11,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Font",
+    },
+    [602] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Highway",
+    },
+    [603] = {
+      [1] = 128,
+      [2] = 13,
+      [3] = "Font",
+      [4] = 24,
+    },
+    [604] = {
+      [1] = 188,
+      [2] = 24,
+      [3] = "@",
+    },
+    [605] = {
+      [1] = 165,
+      [2] = 25,
+      [3] = "game",
+    },
+    [606] = {
+      [1] = 16,
+      [2] = 25,
+      [3] = 25,
+      [4] = "Players",
+    },
+    [607] = {
+      [1] = 88,
+      [2] = 25,
+      [3] = 25,
+      [4] = "LocalPlayer",
+    },
+    [608] = {
+      [1] = 88,
+      [2] = 25,
+      [3] = 25,
+      [4] = "Name",
+    },
+    [609] = {
+      [1] = 273,
+      [2] = 24,
+      [3] = 24,
+      [4] = 25,
+    },
+    [610] = {
+      [1] = 279,
+      [2] = 13,
+      [3] = "Text",
+      [4] = 24,
+    },
+    [611] = {
+      [1] = 14,
+      [2] = 24,
+      [3] = "Color3",
+    },
+    [612] = {
+      [1] = 5,
+      [2] = 24,
+      [3] = 24,
+      [4] = "fromRGB",
+    },
+    [613] = {
+      [1] = 22,
+      [2] = 25,
+      [3] = 160,
+    },
+    [614] = {
+      [1] = 29,
+      [2] = 26,
+      [3] = 160,
+    },
+    [615] = {
+      [1] = 14,
+      [2] = 27,
+      [3] = 160,
+    },
+    [616] = {
+      [1] = 21,
+      [2] = 24,
+      [3] = 27,
+      [4] = 2,
+    },
+    [617] = {
+      [1] = 128,
+      [2] = 13,
+      [3] = "TextColor3",
+      [4] = 24,
+    },
+    [618] = {
+      [1] = 286,
+      [2] = 13,
+      [3] = "TextSize",
+      [4] = 25,
+    },
+    [619] = {
+      [1] = 9,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [620] = {
+      [1] = 16,
+      [2] = 24,
+      [3] = 24,
+      [4] = "TextXAlignment",
+    },
+    [621] = {
+      [1] = 17,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Left",
+    },
+    [622] = {
+      [1] = 21,
+      [2] = 13,
+      [3] = "TextXAlignment",
+      [4] = 24,
+    },
+    [623] = {
+      [1] = 8,
+      [2] = 14,
+      [3] = "Name",
+      [4] = "Credits",
+    },
+    [624] = {
+      [1] = 24,
+      [2] = 14,
+      [3] = "Parent",
+      [4] = 4,
+    },
+    [625] = {
+      [1] = 144,
+      [2] = 14,
+      [3] = "BackgroundTransparency",
+      [4] = 1,
+    },
+    [626] = {
+      [1] = 200,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [627] = {
+      [1] = 15,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [628] = {
+      [1] = 2,
+      [2] = 25,
+      [3] = 0.05,
+    },
+    [629] = {
+      [1] = 4,
+      [2] = 26,
+      [3] = 0,
+    },
+    [630] = {
+      [1] = 18,
+      [2] = 27,
+      [3] = 0.865,
+    },
+    [631] = {
+      [1] = 9,
+      [2] = 28,
+      [3] = 0,
+    },
+    [632] = {
+      [1] = 1,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [633] = {
+      [1] = 170,
+      [2] = 14,
+      [3] = "Position",
+      [4] = 24,
+    },
+    [634] = {
+      [1] = 27,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [635] = {
+      [1] = 29,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [636] = {
+      [1] = 5,
+      [2] = 25,
+      [3] = 0,
+    },
+    [637] = {
+      [1] = 20,
+      [2] = 26,
+      [3] = 200,
+    },
+    [638] = {
+      [1] = 12,
+      [2] = 27,
+      [3] = 0,
+    },
+    [639] = {
+      [1] = 27,
+      [2] = 28,
+      [3] = 20,
+    },
+    [640] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [641] = {
+      [1] = 128,
+      [2] = 14,
+      [3] = "Size",
+      [4] = 24,
+    },
+    [642] = {
+      [1] = 165,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [643] = {
+      [1] = 12,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Font",
+    },
+    [644] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Highway",
+    },
+    [645] = {
+      [1] = 18,
+      [2] = 14,
+      [3] = "Font",
+      [4] = 24,
+    },
+    [646] = {
+      [1] = 23,
+      [2] = 14,
+      [3] = "Text",
+      [4] = "Made with â¤ï¸ by gov",
+    },
+    [647] = {
+      [1] = 22,
+      [2] = 24,
+      [3] = "Color3",
+    },
+    [648] = {
+      [1] = 14,
+      [2] = 24,
+      [3] = 24,
+      [4] = "fromRGB",
+    },
+    [649] = {
+      [1] = 19,
+      [2] = 25,
+      [3] = 136,
+    },
+    [650] = {
+      [1] = 11,
+      [2] = 26,
+      [3] = 136,
+    },
+    [651] = {
+      [1] = 18,
+      [2] = 27,
+      [3] = 136,
+    },
+    [652] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 27,
+      [4] = 2,
+    },
+    [653] = {
+      [1] = 128,
+      [2] = 14,
+      [3] = "TextColor3",
+      [4] = 24,
+    },
+    [654] = {
+      [1] = 286,
+      [2] = 14,
+      [3] = "TextSize",
+      [4] = 18,
+    },
+    [655] = {
+      [1] = 23,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [656] = {
+      [1] = 27,
+      [2] = 24,
+      [3] = 24,
+      [4] = "TextXAlignment",
+    },
+    [657] = {
+      [1] = 15,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Left",
+    },
+    [658] = {
+      [1] = 8,
+      [2] = 14,
+      [3] = "TextXAlignment",
+      [4] = 24,
+    },
+    [659] = {
+      [1] = 4,
+      [2] = 15,
+      [3] = "Name",
+      [4] = "Elapsed",
+    },
+    [660] = {
+      [1] = 23,
+      [2] = 15,
+      [3] = "Parent",
+      [4] = 4,
+    },
+    [661] = {
+      [1] = 144,
+      [2] = 15,
+      [3] = "BackgroundTransparency",
+      [4] = 1,
+    },
+    [662] = {
+      [1] = 200,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [663] = {
+      [1] = 3,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [664] = {
+      [1] = 18,
+      [2] = 25,
+      [3] = 0.546,
+    },
+    [665] = {
+      [1] = 25,
+      [2] = 26,
+      [3] = 0,
+    },
+    [666] = {
+      [1] = 22,
+      [2] = 27,
+      [3] = 0.236,
+    },
+    [667] = {
+      [1] = 23,
+      [2] = 28,
+      [3] = 0,
+    },
+    [668] = {
+      [1] = 22,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [669] = {
+      [1] = 170,
+      [2] = 15,
+      [3] = "Position",
+      [4] = 24,
+    },
+    [670] = {
+      [1] = 26,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [671] = {
+      [1] = 15,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [672] = {
+      [1] = 6,
+      [2] = 25,
+      [3] = 0,
+    },
+    [673] = {
+      [1] = 22,
+      [2] = 26,
+      [3] = 200,
+    },
+    [674] = {
+      [1] = 18,
+      [2] = 27,
+      [3] = 0,
+    },
+    [675] = {
+      [1] = 11,
+      [2] = 28,
+      [3] = 20,
+    },
+    [676] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [677] = {
+      [1] = 128,
+      [2] = 15,
+      [3] = "Size",
+      [4] = 24,
+    },
+    [678] = {
+      [1] = 165,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [679] = {
+      [1] = 14,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Font",
+    },
+    [680] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Highway",
+    },
+    [681] = {
+      [1] = 18,
+      [2] = 15,
+      [3] = "Font",
+      [4] = 24,
+    },
+    [682] = {
+      [1] = 17,
+      [2] = 15,
+      [3] = "Text",
+      [4] = "Elapsed:",
+    },
+    [683] = {
+      [1] = 6,
+      [2] = 24,
+      [3] = "Color3",
+    },
+    [684] = {
+      [1] = 29,
+      [2] = 24,
+      [3] = 24,
+      [4] = "fromRGB",
+    },
+    [685] = {
+      [1] = 14,
+      [2] = 25,
+      [3] = 136,
+    },
+    [686] = {
+      [1] = 28,
+      [2] = 26,
+      [3] = 136,
+    },
+    [687] = {
+      [1] = 26,
+      [2] = 27,
+      [3] = 136,
+    },
+    [688] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 27,
+      [4] = 2,
+    },
+    [689] = {
+      [1] = 128,
+      [2] = 15,
+      [3] = "TextColor3",
+      [4] = 24,
+    },
+    [690] = {
+      [1] = 286,
+      [2] = 15,
+      [3] = "TextSize",
+      [4] = 18,
+    },
+    [691] = {
+      [1] = 1,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [692] = {
+      [1] = 25,
+      [2] = 24,
+      [3] = 24,
+      [4] = "TextXAlignment",
+    },
+    [693] = {
+      [1] = 8,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Right",
+    },
+    [694] = {
+      [1] = 5,
+      [2] = 15,
+      [3] = "TextXAlignment",
+      [4] = 24,
+    },
+    [695] = {
+      [1] = 18,
+      [2] = 16,
+      [3] = "Name",
+      [4] = "Time",
+    },
+    [696] = {
+      [1] = 13,
+      [2] = 16,
+      [3] = "Parent",
+      [4] = 4,
+    },
+    [697] = {
+      [1] = 144,
+      [2] = 16,
+      [3] = "BackgroundTransparency",
+      [4] = 1,
+    },
+    [698] = {
+      [1] = 200,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [699] = {
+      [1] = 13,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [700] = {
+      [1] = 16,
+      [2] = 25,
+      [3] = 0.546,
+    },
+    [701] = {
+      [1] = 3,
+      [2] = 26,
+      [3] = 0,
+    },
+    [702] = {
+      [1] = 16,
+      [2] = 27,
+      [3] = 0.321,
+    },
+    [703] = {
+      [1] = 28,
+      [2] = 28,
+      [3] = 0,
+    },
+    [704] = {
+      [1] = 3,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [705] = {
+      [1] = 170,
+      [2] = 16,
+      [3] = "Position",
+      [4] = 24,
+    },
+    [706] = {
+      [1] = 28,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [707] = {
+      [1] = 20,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [708] = {
+      [1] = 13,
+      [2] = 25,
+      [3] = 0,
+    },
+    [709] = {
+      [1] = 13,
+      [2] = 26,
+      [3] = 200,
+    },
+    [710] = {
+      [1] = 8,
+      [2] = 27,
+      [3] = 0,
+    },
+    [711] = {
+      [1] = 22,
+      [2] = 28,
+      [3] = 30,
+    },
+    [712] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [713] = {
+      [1] = 128,
+      [2] = 16,
+      [3] = "Size",
+      [4] = 24,
+    },
+    [714] = {
+      [1] = 165,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [715] = {
+      [1] = 11,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Font",
+    },
+    [716] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Highway",
+    },
+    [717] = {
+      [1] = 18,
+      [2] = 16,
+      [3] = "Font",
+      [4] = 24,
+    },
+    [718] = {
+      [1] = 29,
+      [2] = 16,
+      [3] = "Text",
+      [4] = "00:00:00",
+    },
+    [719] = {
+      [1] = 14,
+      [2] = 24,
+      [3] = "Color3",
+    },
+    [720] = {
+      [1] = 7,
+      [2] = 24,
+      [3] = 24,
+      [4] = "fromRGB",
+    },
+    [721] = {
+      [1] = 15,
+      [2] = 25,
+      [3] = 160,
+    },
+    [722] = {
+      [1] = 28,
+      [2] = 26,
+      [3] = 160,
+    },
+    [723] = {
+      [1] = 5,
+      [2] = 27,
+      [3] = 160,
+    },
+    [724] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 27,
+      [4] = 2,
+    },
+    [725] = {
+      [1] = 128,
+      [2] = 16,
+      [3] = "TextColor3",
+      [4] = 24,
+    },
+    [726] = {
+      [1] = 144,
+      [2] = 16,
+      [3] = "TextSize",
+      [4] = 25,
+    },
+    [727] = {
+      [1] = 165,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [728] = {
+      [1] = 25,
+      [2] = 24,
+      [3] = 24,
+      [4] = "TextXAlignment",
+    },
+    [729] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Right",
+    },
+    [730] = {
+      [1] = 37,
+      [2] = 16,
+      [3] = "TextXAlignment",
+      [4] = 24,
+    },
+    [731] = {
+      [1] = 26,
+      [2] = 17,
+      [3] = "Parent",
+      [4] = 4,
+    },
+    [732] = {
+      [1] = 20,
+      [2] = 17,
+      [3] = "BackgroundTransparency",
+      [4] = 1,
+    },
+    [733] = {
+      [1] = 5,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [734] = {
+      [1] = 9,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [735] = {
+      [1] = 11,
+      [2] = 25,
+      [3] = 0.899,
+    },
+    [736] = {
+      [1] = 15,
+      [2] = 26,
+      [3] = 0,
+    },
+    [737] = {
+      [1] = 38,
+      [2] = 27,
+      [3] = 0.07,
+    },
+    [738] = {
+      [1] = 8,
+      [2] = 28,
+      [3] = 0,
+    },
+    [739] = {
+      [1] = 5,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [740] = {
+      [1] = 29,
+      [2] = 17,
+      [3] = "Position",
+      [4] = 24,
+    },
+    [741] = {
+      [1] = 22,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [742] = {
+      [1] = 5,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [743] = {
+      [1] = 4,
+      [2] = 25,
+      [3] = 0,
+    },
+    [744] = {
+      [1] = 188,
+      [2] = 26,
+      [3] = 25,
+    },
+    [745] = {
+      [1] = 188,
+      [2] = 27,
+      [3] = 0,
+    },
+    [746] = {
+      [1] = 61,
+      [2] = 28,
+      [3] = 25,
+    },
+    [747] = {
+      [1] = 15,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [748] = {
+      [1] = 2,
+      [2] = 17,
+      [3] = "Size",
+      [4] = 24,
+    },
+    [749] = {
+      [1] = 29,
+      [2] = 17,
+      [3] = "Image",
+      [4] = "http://www.roblox.com/asset/?id=75546510947385",
+    },
+    [750] = {
+      [1] = 11,
+      [2] = 17,
+      [3] = "ImageTransparency",
+      [4] = 0.5,
+    },
+    [751] = {
+      [1] = 23,
+      [2] = 18,
+      [3] = "Name",
+      [4] = "Status",
+    },
+    [752] = {
+      [1] = 17,
+      [2] = 18,
+      [3] = "Parent",
+      [4] = 4,
+    },
+    [753] = {
+      [1] = 144,
+      [2] = 18,
+      [3] = "BackgroundTransparency",
+      [4] = 1,
+    },
+    [754] = {
+      [1] = 200,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [755] = {
+      [1] = 21,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [756] = {
+      [1] = 8,
+      [2] = 25,
+      [3] = 0.849,
+    },
+    [757] = {
+      [1] = 19,
+      [2] = 26,
+      [3] = 0,
+    },
+    [758] = {
+      [1] = 11,
+      [2] = 27,
+      [3] = 0.443,
+    },
+    [759] = {
+      [1] = 23,
+      [2] = 28,
+      [3] = 0,
+    },
+    [760] = {
+      [1] = 27,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [761] = {
+      [1] = 170,
+      [2] = 18,
+      [3] = "Position",
+      [4] = 24,
+    },
+    [762] = {
+      [1] = 13,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [763] = {
+      [1] = 24,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [764] = {
+      [1] = 9,
+      [2] = 25,
+      [3] = 0,
+    },
+    [765] = {
+      [1] = 12,
+      [2] = 26,
+      [3] = 50,
+    },
+    [766] = {
+      [1] = 23,
+      [2] = 27,
+      [3] = 0,
+    },
+    [767] = {
+      [1] = 1,
+      [2] = 28,
+      [3] = 20,
+    },
+    [768] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [769] = {
+      [1] = 128,
+      [2] = 18,
+      [3] = "Size",
+      [4] = 24,
+    },
+    [770] = {
+      [1] = 165,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [771] = {
+      [1] = 4,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Font",
+    },
+    [772] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Highway",
+    },
+    [773] = {
+      [1] = 18,
+      [2] = 18,
+      [3] = "Font",
+      [4] = 24,
+    },
+    [774] = {
+      [1] = 5,
+      [2] = 18,
+      [3] = "Text",
+      [4] = "Status:",
+    },
+    [775] = {
+      [1] = 4,
+      [2] = 24,
+      [3] = "Color3",
+    },
+    [776] = {
+      [1] = 5,
+      [2] = 24,
+      [3] = 24,
+      [4] = "fromRGB",
+    },
+    [777] = {
+      [1] = 22,
+      [2] = 25,
+      [3] = 136,
+    },
+    [778] = {
+      [1] = 1,
+      [2] = 26,
+      [3] = 136,
+    },
+    [779] = {
+      [1] = 3,
+      [2] = 27,
+      [3] = 136,
+    },
+    [780] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 27,
+      [4] = 2,
+    },
+    [781] = {
+      [1] = 128,
+      [2] = 18,
+      [3] = "TextColor3",
+      [4] = 24,
+    },
+    [782] = {
+      [1] = 286,
+      [2] = 18,
+      [3] = "TextSize",
+      [4] = 18,
+    },
+    [783] = {
+      [1] = 17,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [784] = {
+      [1] = 8,
+      [2] = 24,
+      [3] = 24,
+      [4] = "TextXAlignment",
+    },
+    [785] = {
+      [1] = 16,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Right",
+    },
+    [786] = {
+      [1] = 1,
+      [2] = 18,
+      [3] = "TextXAlignment",
+      [4] = 24,
+    },
+    [787] = {
+      [1] = 13,
+      [2] = 19,
+      [3] = "Name",
+      [4] = "CurrentStatus",
+    },
+    [788] = {
+      [1] = 6,
+      [2] = 19,
+      [3] = "Parent",
+      [4] = 4,
+    },
+    [789] = {
+      [1] = 144,
+      [2] = 19,
+      [3] = "BackgroundTransparency",
+      [4] = 1,
+    },
+    [790] = {
+      [1] = 200,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [791] = {
+      [1] = 12,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [792] = {
+      [1] = 17,
+      [2] = 25,
+      [3] = 0.544,
+    },
+    [793] = {
+      [1] = 28,
+      [2] = 26,
+      [3] = 0,
+    },
+    [794] = {
+      [1] = 3,
+      [2] = 27,
+      [3] = 0.51,
+    },
+    [795] = {
+      [1] = 1,
+      [2] = 28,
+      [3] = 0,
+    },
+    [796] = {
+      [1] = 16,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [797] = {
+      [1] = 170,
+      [2] = 19,
+      [3] = "Position",
+      [4] = 24,
+    },
+    [798] = {
+      [1] = 4,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [799] = {
+      [1] = 19,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [800] = {
+      [1] = 14,
+      [2] = 25,
+      [3] = 0,
+    },
+    [801] = {
+      [1] = 12,
+      [2] = 26,
+      [3] = 200,
+    },
+    [802] = {
+      [1] = 29,
+      [2] = 27,
+      [3] = 0,
+    },
+    [803] = {
+      [1] = 18,
+      [2] = 28,
+      [3] = 30,
+    },
+    [804] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [805] = {
+      [1] = 128,
+      [2] = 19,
+      [3] = "Size",
+      [4] = 24,
+    },
+    [806] = {
+      [1] = 165,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [807] = {
+      [1] = 6,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Font",
+    },
+    [808] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Highway",
+    },
+    [809] = {
+      [1] = 18,
+      [2] = 19,
+      [3] = "Font",
+      [4] = 24,
+    },
+    [810] = {
+      [1] = 21,
+      [2] = 19,
+      [3] = "Text",
+      [4] = "Loading",
+    },
+    [811] = {
+      [1] = 4,
+      [2] = 24,
+      [3] = "Color3",
+    },
+    [812] = {
+      [1] = 28,
+      [2] = 24,
+      [3] = 24,
+      [4] = "fromRGB",
+    },
+    [813] = {
+      [1] = 20,
+      [2] = 25,
+      [3] = 160,
+    },
+    [814] = {
+      [1] = 12,
+      [2] = 26,
+      [3] = 160,
+    },
+    [815] = {
+      [1] = 13,
+      [2] = 27,
+      [3] = 160,
+    },
+    [816] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 27,
+      [4] = 2,
+    },
+    [817] = {
+      [1] = 128,
+      [2] = 19,
+      [3] = "TextColor3",
+      [4] = 24,
+    },
+    [818] = {
+      [1] = 286,
+      [2] = 19,
+      [3] = "TextSize",
+      [4] = 25,
+    },
+    [819] = {
+      [1] = 17,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [820] = {
+      [1] = 22,
+      [2] = 24,
+      [3] = 24,
+      [4] = "TextXAlignment",
+    },
+    [821] = {
+      [1] = 19,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Right",
+    },
+    [822] = {
+      [1] = 4,
+      [2] = 19,
+      [3] = "TextXAlignment",
+      [4] = 24,
+    },
+    [823] = {
+      [1] = 1,
+      [2] = 20,
+      [3] = "Name",
+      [4] = "Availability",
+    },
+    [824] = {
+      [1] = 26,
+      [2] = 20,
+      [3] = "Parent",
+      [4] = 4,
+    },
+    [825] = {
+      [1] = 144,
+      [2] = 20,
+      [3] = "BackgroundTransparency",
+      [4] = 1,
+    },
+    [826] = {
+      [1] = 200,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [827] = {
+      [1] = 28,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [828] = {
+      [1] = 25,
+      [2] = 25,
+      [3] = 0.544,
+    },
+    [829] = {
+      [1] = 20,
+      [2] = 26,
+      [3] = 0,
+    },
+    [830] = {
+      [1] = 18,
+      [2] = 27,
+      [3] = 0.443,
+    },
+    [831] = {
+      [1] = 6,
+      [2] = 28,
+      [3] = 0,
+    },
+    [832] = {
+      [1] = 20,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [833] = {
+      [1] = 170,
+      [2] = 20,
+      [3] = "Position",
+      [4] = 24,
+    },
+    [834] = {
+      [1] = 3,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [835] = {
+      [1] = 8,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [836] = {
+      [1] = 22,
+      [2] = 25,
+      [3] = 0,
+    },
+    [837] = {
+      [1] = 13,
+      [2] = 26,
+      [3] = 149,
+    },
+    [838] = {
+      [1] = 14,
+      [2] = 27,
+      [3] = 0,
+    },
+    [839] = {
+      [1] = 16,
+      [2] = 28,
+      [3] = 20,
+    },
+    [840] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [841] = {
+      [1] = 128,
+      [2] = 20,
+      [3] = "Size",
+      [4] = 24,
+    },
+    [842] = {
+      [1] = 165,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [843] = {
+      [1] = 3,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Font",
+    },
+    [844] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Highway",
+    },
+    [845] = {
+      [1] = 18,
+      [2] = 20,
+      [3] = "Font",
+      [4] = 24,
+    },
+    [846] = {
+      [1] = 2,
+      [2] = 20,
+      [3] = "Text",
+      [4] = "âš ï¸ No ATMS Available",
+    },
+    [847] = {
+      [1] = 12,
+      [2] = 24,
+      [3] = "Color3",
+    },
+    [848] = {
+      [1] = 6,
+      [2] = 24,
+      [3] = 24,
+      [4] = "fromRGB",
+    },
+    [849] = {
+      [1] = 9,
+      [2] = 25,
+      [3] = 255,
+    },
+    [850] = {
+      [1] = 20,
+      [2] = 26,
+      [3] = 0,
+    },
+    [851] = {
+      [1] = 10,
+      [2] = 27,
+      [3] = 4,
+    },
+    [852] = {
+      [1] = 54,
+      [2] = 24,
+      [3] = 27,
+      [4] = 2,
+    },
+    [853] = {
+      [1] = 128,
+      [2] = 20,
+      [3] = "TextColor3",
+      [4] = 24,
+    },
+    [854] = {
+      [1] = 144,
+      [2] = 20,
+      [3] = "TextSize",
+      [4] = 18,
+    },
+    [855] = {
+      [1] = 144,
+      [2] = 20,
+      [3] = "TextTransparency",
+      [4] = 1,
+    },
+    [856] = {
+      [1] = 165,
+      [2] = 24,
+      [3] = "Enum",
+    },
+    [857] = {
+      [1] = 1,
+      [2] = 24,
+      [3] = 24,
+      [4] = "TextXAlignment",
+    },
+    [858] = {
+      [1] = 26,
+      [2] = 24,
+      [3] = 24,
+      [4] = "Right",
+    },
+    [859] = {
+      [1] = 22,
+      [2] = 20,
+      [3] = "TextXAlignment",
+      [4] = 24,
+    },
+    [860] = {
+      [1] = 15,
+      [2] = 24,
+      [3] = "ColorSequence",
+    },
+    [861] = {
+      [1] = 20,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [862] = {
+      [1] = 11,
+      [2] = 25,
+      [3] = 2,
+      [4] = 0,
+    },
+    [863] = {
+      [1] = 17,
+      [2] = 26,
+      [3] = "ColorSequenceKeypoint",
+    },
+    [864] = {
+      [1] = 2,
+      [2] = 26,
+      [3] = 26,
+      [4] = "new",
+    },
+    [865] = {
+      [1] = 188,
+      [2] = 27,
+      [3] = 0,
+    },
+    [866] = {
+      [1] = 165,
+      [2] = 28,
+      [3] = "Color3",
+    },
+    [867] = {
+      [1] = 21,
+      [2] = 28,
+      [3] = 28,
+      [4] = "fromRGB",
+    },
+    [868] = {
+      [1] = 157,
+      [2] = 29,
+      [3] = 120,
+    },
+    [869] = {
+      [1] = 3,
+      [2] = 30,
+      [3] = 0,
+    },
+    [870] = {
+      [1] = 7,
+      [2] = 31,
+      [3] = 2,
+    },
+    [871] = {
+      [1] = 4,
+      [2] = 28,
+      [3] = 31,
+      [4] = 0,
+    },
+    [872] = {
+      [1] = 10,
+      [2] = 26,
+      [3] = 0,
+      [4] = 2,
+    },
+    [873] = {
+      [1] = 165,
+      [2] = 27,
+      [3] = "ColorSequenceKeypoint",
+    },
+    [874] = {
+      [1] = 18,
+      [2] = 27,
+      [3] = 27,
+      [4] = "new",
+    },
+    [875] = {
+      [1] = 188,
+      [2] = 28,
+      [3] = 0.97,
+    },
+    [876] = {
+      [1] = 165,
+      [2] = 29,
+      [3] = "Color3",
+    },
+    [877] = {
+      [1] = 17,
+      [2] = 29,
+      [3] = 29,
+      [4] = "fromRGB",
+    },
+    [878] = {
+      [1] = 157,
+      [2] = 30,
+      [3] = 255,
+    },
+    [879] = {
+      [1] = 22,
+      [2] = 31,
+      [3] = 246,
+    },
+    [880] = {
+      [1] = 15,
+      [2] = 32,
+      [3] = 246,
+    },
+    [881] = {
+      [1] = 5,
+      [2] = 29,
+      [3] = 32,
+      [4] = 0,
+    },
+    [882] = {
+      [1] = 28,
+      [2] = 27,
+      [3] = 0,
+      [4] = 2,
+    },
+    [883] = {
+      [1] = 165,
+      [2] = 28,
+      [3] = "ColorSequenceKeypoint",
+    },
+    [884] = {
+      [1] = 13,
+      [2] = 28,
+      [3] = 28,
+      [4] = "new",
+    },
+    [885] = {
+      [1] = 188,
+      [2] = 29,
+      [3] = 1,
+    },
+    [886] = {
+      [1] = 165,
+      [2] = 30,
+      [3] = "Color3",
+    },
+    [887] = {
+      [1] = 23,
+      [2] = 30,
+      [3] = 30,
+      [4] = "fromRGB",
+    },
+    [888] = {
+      [1] = 188,
+      [2] = 31,
+      [3] = 255,
+    },
+    [889] = {
+      [1] = 188,
+      [2] = 32,
+      [3] = 0,
+    },
+    [890] = {
+      [1] = 278,
+      [2] = 33,
+      [3] = 0,
+    },
+    [891] = {
+      [1] = 4,
+      [2] = 30,
+      [3] = 33,
+      [4] = 0,
+    },
+    [892] = {
+      [1] = 3,
+      [2] = 28,
+      [3] = 0,
+      [4] = 0,
+    },
+    [893] = {
+      [1] = 27,
+      [2] = 25,
+      [3] = 0,
+      [4] = 1,
+    },
+    [894] = {
+      [1] = 52,
+      [2] = 24,
+      [3] = 2,
+      [4] = 2,
+    },
+    [895] = {
+      [1] = 47,
+      [2] = 21,
+      [3] = "Color",
+      [4] = 24,
+    },
+    [896] = {
+      [1] = 22,
+      [2] = 21,
+      [3] = "Rotation",
+      [4] = -90,
+    },
+    [897] = {
+      [1] = 10,
+      [2] = 21,
+      [3] = "Parent",
+      [4] = 20,
+    },
+    [898] = {
+      [1] = 29,
+      [2] = 22,
+      [3] = "Name",
+      [4] = "Avatar",
+    },
+    [899] = {
+      [1] = 21,
+      [2] = 22,
+      [3] = "Parent",
+      [4] = 4,
+    },
+    [900] = {
+      [1] = 4,
+      [2] = 22,
+      [3] = "BackgroundTransparency",
+      [4] = 1,
+    },
+    [901] = {
+      [1] = 13,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [902] = {
+      [1] = 88,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [903] = {
+      [1] = 73,
+      [2] = 25,
+      [3] = 0.808,
+    },
+    [904] = {
+      [1] = 8,
+      [2] = 26,
+      [3] = 0,
+    },
+    [905] = {
+      [1] = 2,
+      [2] = 27,
+      [3] = 0.695,
+    },
+    [906] = {
+      [1] = 12,
+      [2] = 28,
+      [3] = 0,
+    },
+    [907] = {
+      [1] = 14,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [908] = {
+      [1] = 8,
+      [2] = 22,
+      [3] = "Position",
+      [4] = 24,
+    },
+    [909] = {
+      [1] = 3,
+      [2] = 24,
+      [3] = "UDim2",
+    },
+    [910] = {
+      [1] = 210,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [911] = {
+      [1] = 8,
+      [2] = 25,
+      [3] = 0,
+    },
+    [912] = {
+      [1] = 1,
+      [2] = 26,
+      [3] = 70,
+    },
+    [913] = {
+      [1] = 28,
+      [2] = 27,
+      [3] = 0,
+    },
+    [914] = {
+      [1] = 9,
+      [2] = 28,
+      [3] = 70,
+    },
+    [915] = {
+      [1] = 10,
+      [2] = 24,
+      [3] = 28,
+      [4] = 2,
+    },
+    [916] = {
+      [1] = 8,
+      [2] = 22,
+      [3] = "Size",
+      [4] = 24,
+    },
+    [917] = {
+      [1] = 15,
+      [2] = 24,
+      [3] = "rbxassetid://",
+    },
+    [918] = {
+      [1] = 165,
+      [2] = 25,
+      [3] = "game",
+    },
+    [919] = {
+      [1] = 23,
+      [2] = 25,
+      [3] = 25,
+      [4] = "Players",
+    },
+    [920] = {
+      [1] = 88,
+      [2] = 25,
+      [3] = 25,
+      [4] = "LocalPlayer",
+    },
+    [921] = {
+      [1] = 88,
+      [2] = 25,
+      [3] = 25,
+      [4] = "UserId",
+    },
+    [922] = {
+      [1] = 273,
+      [2] = 24,
+      [3] = 24,
+      [4] = 25,
+    },
+    [923] = {
+      [1] = 128,
+      [2] = 22,
+      [3] = "Image",
+      [4] = 24,
+    },
+    [924] = {
+      [1] = 165,
+      [2] = 24,
+      [3] = "UDim",
+    },
+    [925] = {
+      [1] = 1,
+      [2] = 24,
+      [3] = 24,
+      [4] = "new",
+    },
+    [926] = {
+      [1] = 81,
+      [2] = 25,
+      [3] = 1,
+    },
+    [927] = {
+      [1] = 17,
+      [2] = 26,
+      [3] = 0,
+    },
+    [928] = {
+      [1] = 1,
+      [2] = 24,
+      [3] = 26,
+      [4] = 2,
+    },
+    [929] = {
+      [1] = 23,
+      [2] = 23,
+      [3] = "CornerRadius",
+      [4] = 24,
+    },
+    [930] = {
+      [1] = 9,
+      [2] = 23,
+      [3] = "Parent",
+      [4] = 22,
+    },
+    [931] = {
+      [1] = 209,
+      [2] = 24,
+      [3] = 25,
+      [4] = 1,
+    },
+    [932] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 7,
+      [4] = 0,
+    },
+    [933] = {
+      [1] = 209,
+      [2] = 25,
+      [3] = 5,
+      [4] = 1,
+    },
+    [934] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 16,
+      [4] = 0,
+    },
+    [935] = {
+      [1] = 209,
+      [2] = 26,
+      [3] = 4,
+      [4] = 1,
+    },
+    [936] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 22,
+      [4] = 0,
+    },
+    [937] = {
+      [1] = 165,
+      [2] = 27,
+      [3] = "task",
+    },
+    [938] = {
+      [1] = 25,
+      [2] = 27,
+      [3] = 27,
+      [4] = "spawn",
+    },
+    [939] = {
+      [1] = 242,
+      [2] = 28,
+      [3] = 24,
+      [4] = 0,
+    },
+    [940] = {
+      [1] = 104,
+      [2] = 27,
+      [3] = 2,
+      [4] = 1,
+    },
+    [941] = {
+      [1] = 165,
+      [2] = 27,
+      [3] = "task",
+    },
+    [942] = {
+      [1] = 4,
+      [2] = 27,
+      [3] = 27,
+      [4] = "spawn",
+    },
+    [943] = {
+      [1] = 242,
+      [2] = 28,
+      [3] = 25,
+      [4] = 0,
+    },
+    [944] = {
+      [1] = 104,
+      [2] = 27,
+      [3] = 2,
+      [4] = 1,
+    },
+    [945] = {
+      [1] = 165,
+      [2] = 27,
+      [3] = "task",
+    },
+    [946] = {
+      [1] = 21,
+      [2] = 27,
+      [3] = 27,
+      [4] = "spawn",
+    },
+    [947] = {
+      [1] = 242,
+      [2] = 28,
+      [3] = 26,
+      [4] = 0,
+    },
+    [948] = {
+      [1] = 104,
+      [2] = 27,
+      [3] = 2,
+      [4] = 1,
+    },
+    [949] = {
+      [1] = 165,
+      [2] = 27,
+      [3] = "Instance",
+    },
+    [950] = {
+      [1] = 14,
+      [2] = 27,
+      [3] = 27,
+      [4] = "new",
+    },
+    [951] = {
+      [1] = 188,
+      [2] = 28,
+      [3] = "Part",
+    },
+    [952] = {
+      [1] = 52,
+      [2] = 27,
+      [3] = 2,
+      [4] = 2,
+    },
+    [953] = {
+      [1] = 144,
+      [2] = 27,
+      [3] = "Name",
+      [4] = "CustomBaseplate",
+    },
+    [954] = {
+      [1] = 171,
+      [2] = 27,
+      [3] = "Anchored",
+      [4] = true,
+    },
+    [955] = {
+      [1] = 4,
+      [2] = 28,
+      [3] = "Vector3",
+    },
+    [956] = {
+      [1] = 5,
+      [2] = 28,
+      [3] = 28,
+      [4] = "new",
+    },
+    [957] = {
+      [1] = 27,
+      [2] = 29,
+      [3] = 10,
+    },
+    [958] = {
+      [1] = 7,
+      [2] = 30,
+      [3] = 1,
+    },
+    [959] = {
+      [1] = 3,
+      [2] = 31,
+      [3] = 10,
+    },
+    [960] = {
+      [1] = 21,
+      [2] = 28,
+      [3] = 31,
+      [4] = 2,
+    },
+    [961] = {
+      [1] = 279,
+      [2] = 27,
+      [3] = "Size",
+      [4] = 28,
+    },
+    [962] = {
+      [1] = 3,
+      [2] = 28,
+      [3] = "Vector3",
+    },
+    [963] = {
+      [1] = 7,
+      [2] = 28,
+      [3] = 28,
+      [4] = "new",
+    },
+    [964] = {
+      [1] = 15,
+      [2] = 29,
+      [3] = -800,
+    },
+    [965] = {
+      [1] = 10,
+      [2] = 30,
+      [3] = -40,
+    },
+    [966] = {
+      [1] = 15,
+      [2] = 31,
+      [3] = -4000,
+    },
+    [967] = {
+      [1] = 25,
+      [2] = 28,
+      [3] = 31,
+      [4] = 2,
+    },
+    [968] = {
+      [1] = 128,
+      [2] = 27,
+      [3] = "Position",
+      [4] = 28,
+    },
+    [969] = {
+      [1] = 254,
+      [2] = 28,
+      [3] = "Enum",
+    },
+    [970] = {
+      [1] = 29,
+      [2] = 28,
+      [3] = 28,
+      [4] = "Material",
+    },
+    [971] = {
+      [1] = 29,
+      [2] = 28,
+      [3] = 28,
+      [4] = "SmoothPlastic",
+    },
+    [972] = {
+      [1] = 19,
+      [2] = 27,
+      [3] = "Material",
+      [4] = 28,
+    },
+    [973] = {
+      [1] = 4,
+      [2] = 28,
+      [3] = "BrickColor",
+    },
+    [974] = {
+      [1] = 22,
+      [2] = 28,
+      [3] = 28,
+      [4] = "new",
+    },
+    [975] = {
+      [1] = 13,
+      [2] = 29,
+      [3] = "Medium stone grey",
+    },
+    [976] = {
+      [1] = 52,
+      [2] = 28,
+      [3] = 2,
+      [4] = 2,
+    },
+    [977] = {
+      [1] = 283,
+      [2] = 27,
+      [3] = "BrickColor",
+      [4] = 28,
+    },
+    [978] = {
+      [1] = 16,
+      [2] = 28,
+      [3] = "workspace",
+    },
+    [979] = {
+      [1] = 9,
+      [2] = 27,
+      [3] = "Parent",
+      [4] = 28,
+    },
+    [980] = {
+      [1] = 21,
+      [2] = 28,
+      [3] = "Instance",
+    },
+    [981] = {
+      [1] = 6,
+      [2] = 28,
+      [3] = 28,
+      [4] = "new",
+    },
+    [982] = {
+      [1] = 14,
+      [2] = 29,
+      [3] = "Part",
+    },
+    [983] = {
+      [1] = 29,
+      [2] = 28,
+      [3] = 2,
+      [4] = 2,
+    },
+    [984] = {
+      [1] = 144,
+      [2] = 28,
+      [3] = "Name",
+      [4] = "Baseplate",
+    },
+    [985] = {
+      [1] = 171,
+      [2] = 28,
+      [3] = "Anchored",
+      [4] = true,
+    },
+    [986] = {
+      [1] = 12,
+      [2] = 29,
+      [3] = "Vector3",
+    },
+    [987] = {
+      [1] = 12,
+      [2] = 29,
+      [3] = 29,
+      [4] = "new",
+    },
+    [988] = {
+      [1] = 25,
+      [2] = 30,
+      [3] = 2000,
+    },
+    [989] = {
+      [1] = 5,
+      [2] = 31,
+      [3] = 1,
+    },
+    [990] = {
+      [1] = 22,
+      [2] = 32,
+      [3] = 2000,
+    },
+    [991] = {
+      [1] = 5,
+      [2] = 29,
+      [3] = 32,
+      [4] = 2,
+    },
+    [992] = {
+      [1] = 279,
+      [2] = 28,
+      [3] = "Size",
+      [4] = 29,
+    },
+    [993] = {
+      [1] = 25,
+      [2] = 29,
+      [3] = "Vector3",
+    },
+    [994] = {
+      [1] = 5,
+      [2] = 29,
+      [3] = 29,
+      [4] = "new",
+    },
+    [995] = {
+      [1] = 9,
+      [2] = 30,
+      [3] = -129.65,
+    },
+    [996] = {
+      [1] = 29,
+      [2] = 31,
+      [3] = -73.545,
+    },
+    [997] = {
+      [1] = 6,
+      [2] = 32,
+      [3] = -306.65,
+    },
+    [998] = {
+      [1] = 21,
+      [2] = 29,
+      [3] = 32,
+      [4] = 2,
+    },
+    [999] = {
+      [1] = 279,
+      [2] = 28,
+      [3] = "Position",
+      [4] = 29,
+    },
+    [1000] = {
+      [1] = 20,
+      [2] = 29,
+      [3] = "Color3",
+    },
+    [1001] = {
+      [1] = 17,
+      [2] = 29,
+      [3] = 29,
+      [4] = "fromRGB",
+    },
+    [1002] = {
+      [1] = 2,
+      [2] = 30,
+      [3] = 102,
+    },
+    [1003] = {
+      [1] = 1,
+      [2] = 31,
+      [3] = 102,
+    },
+    [1004] = {
+      [1] = 20,
+      [2] = 32,
+      [3] = 102,
+    },
+    [1005] = {
+      [1] = 14,
+      [2] = 29,
+      [3] = 32,
+      [4] = 2,
+    },
+    [1006] = {
+      [1] = 128,
+      [2] = 28,
+      [3] = "Color",
+      [4] = 29,
+    },
+    [1007] = {
+      [1] = 165,
+      [2] = 29,
+      [3] = "Enum",
+    },
+    [1008] = {
+      [1] = 9,
+      [2] = 29,
+      [3] = 29,
+      [4] = "Material",
+    },
+    [1009] = {
+      [1] = 141,
+      [2] = 29,
+      [3] = 29,
+      [4] = "Concrete",
+    },
+    [1010] = {
+      [1] = 28,
+      [2] = 28,
+      [3] = "Material",
+      [4] = 29,
+    },
+    [1011] = {
+      [1] = 23,
+      [2] = 29,
+      [3] = "workspace",
+    },
+    [1012] = {
+      [1] = 2,
+      [2] = 28,
+      [3] = "Parent",
+      [4] = 29,
+    },
+    [1013] = {
+      [1] = 23,
+      [2] = 29,
+      [3] = "game",
+    },
+    [1014] = {
+      [1] = 29,
+      [2] = 29,
+      [3] = 29,
+      [4] = "Players",
+    },
+    [1015] = {
+      [1] = 25,
+      [2] = 29,
+      [3] = 29,
+      [4] = "LocalPlayer",
+    },
+    [1016] = {
+      [1] = 244,
+      [2] = 30,
+      [3] = 30,
+      [4] = 0,
+    },
+    [1017] = {
+      [1] = 264,
+      [2] = 31,
+      [3] = 1,
+      [4] = 0,
+    },
+    [1018] = {
+      [1] = 2,
+      [2] = 32,
+      [3] = 32,
+      [4] = 0,
+    },
+    [1019] = {
+      [1] = 11,
+      [2] = 33,
+      [3] = "os",
+    },
+    [1020] = {
+      [1] = 27,
+      [2] = 33,
+      [3] = 33,
+      [4] = "time",
+    },
+    [1021] = {
+      [1] = 28,
+      [2] = 33,
+      [3] = 1,
+      [4] = 2,
+    },
+    [1022] = {
+      [1] = 16,
+      [2] = 34,
+      [3] = "game",
+    },
+    [1023] = {
+      [1] = 6,
+      [2] = 34,
+      [3] = 34,
+      [4] = "GetService",
+    },
+    [1024] = {
+      [1] = 188,
+      [2] = 36,
+      [3] = "HttpService",
+    },
+    [1025] = {
+      [1] = 54,
+      [2] = 34,
+      [3] = 36,
+      [4] = 2,
+    },
+    [1026] = {
+      [1] = 13,
+      [2] = 35,
+      [3] = 14,
+    },
+    [1027] = {
+      [1] = 242,
+      [2] = 36,
+      [3] = 35,
+      [4] = 0,
+    },
+    [1028] = {
+      [1] = 194,
+      [2] = 36,
+      [3] = 1,
+      [4] = 2,
+    },
+    [1029] = {
+      [1] = 42,
+      [2] = 36,
+      [3] = 1031,
+      [4] = 1,
+    },
+    [1030] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1031,
+    },
+    [1031] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1043,
+    },
+    [1032] = {
+      [1] = 209,
+      [2] = 37,
+      [3] = 9,
+      [4] = 4,
+    },
+    [1033] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 29,
+      [4] = 0,
+    },
+    [1034] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 33,
+      [4] = 0,
+    },
+    [1035] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 36,
+      [4] = 0,
+    },
+    [1036] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 34,
+      [4] = 0,
+    },
+    [1037] = {
+      [1] = 165,
+      [2] = 38,
+      [3] = "task",
+    },
+    [1038] = {
+      [1] = 19,
+      [2] = 38,
+      [3] = 38,
+      [4] = "spawn",
+    },
+    [1039] = {
+      [1] = 209,
+      [2] = 39,
+      [3] = 1,
+      [4] = 2,
+    },
+    [1040] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 31,
+      [4] = 0,
+    },
+    [1041] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 37,
+      [4] = 0,
+    },
+    [1042] = {
+      [1] = 122,
+      [2] = 38,
+      [3] = 2,
+      [4] = 1,
+    },
+    [1043] = {
+      [1] = 16,
+      [2] = 37,
+      [3] = 0,
+      [4] = 0,
+    },
+    [1044] = {
+      [1] = 209,
+      [2] = 37,
+      [3] = 3,
+      [4] = 1,
+    },
+    [1045] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 29,
+      [4] = 0,
+    },
+    [1046] = {
+      [1] = 209,
+      [2] = 38,
+      [3] = 11,
+      [4] = 1,
+    },
+    [1047] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 37,
+      [4] = 0,
+    },
+    [1048] = {
+      [1] = 209,
+      [2] = 39,
+      [3] = 8,
+      [4] = 1,
+    },
+    [1049] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 29,
+      [4] = 0,
+    },
+    [1050] = {
+      [1] = 88,
+      [2] = 40,
+      [3] = 29,
+      [4] = "CharacterAdded",
+    },
+    [1051] = {
+      [1] = 228,
+      [2] = 40,
+      [3] = 40,
+      [4] = "Connect",
+    },
+    [1052] = {
+      [1] = 209,
+      [2] = 42,
+      [3] = 18,
+      [4] = 1,
+    },
+    [1053] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 39,
+      [4] = 0,
+    },
+    [1054] = {
+      [1] = 265,
+      [2] = 40,
+      [3] = 42,
+      [4] = 1,
+    },
+    [1055] = {
+      [1] = 18,
+      [2] = 40,
+      [3] = 29,
+      [4] = "Character",
+    },
+    [1056] = {
+      [1] = 1,
+      [2] = 40,
+      [3] = 1072,
+      [4] = 0,
+    },
+    [1057] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1072,
+    },
+    [1058] = {
+      [1] = 88,
+      [2] = 40,
+      [3] = 29,
+      [4] = "Character",
+    },
+    [1059] = {
+      [1] = 113,
+      [2] = 40,
+      [3] = 40,
+      [4] = "FindFirstChild",
+    },
+    [1060] = {
+      [1] = 3,
+      [2] = 42,
+      [3] = "Humanoid",
+    },
+    [1061] = {
+      [1] = 29,
+      [2] = 40,
+      [3] = 42,
+      [4] = 2,
+    },
+    [1062] = {
+      [1] = 42,
+      [2] = 40,
+      [3] = 1064,
+      [4] = 1,
+    },
+    [1063] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1064,
+    },
+    [1064] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1072,
+    },
+    [1065] = {
+      [1] = 88,
+      [2] = 40,
+      [3] = 29,
+      [4] = "Character",
+    },
+    [1066] = {
+      [1] = 88,
+      [2] = 40,
+      [3] = 40,
+      [4] = "Humanoid",
+    },
+    [1067] = {
+      [1] = 240,
+      [2] = 41,
+      [3] = 40,
+      [4] = "GetPropertyChangedSignal",
+    },
+    [1068] = {
+      [1] = 13,
+      [2] = 43,
+      [3] = "Health",
+    },
+    [1069] = {
+      [1] = 18,
+      [2] = 41,
+      [3] = 43,
+      [4] = 2,
+    },
+    [1070] = {
+      [1] = 8,
+      [2] = 41,
+      [3] = 41,
+      [4] = "Connect",
+    },
+    [1071] = {
+      [1] = 242,
+      [2] = 43,
+      [3] = 39,
+      [4] = 0,
+    },
+    [1072] = {
+      [1] = 230,
+      [2] = 41,
+      [3] = 43,
+      [4] = 1,
+    },
+    [1073] = {
+      [1] = 209,
+      [2] = 40,
+      [3] = 24,
+      [4] = 2,
+    },
+    [1074] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 31,
+      [4] = 0,
+    },
+    [1075] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 29,
+      [4] = 0,
+    },
+    [1076] = {
+      [1] = 209,
+      [2] = 41,
+      [3] = 22,
+      [4] = 4,
+    },
+    [1077] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 31,
+      [4] = 0,
+    },
+    [1078] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 29,
+      [4] = 0,
+    },
+    [1079] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 40,
+      [4] = 0,
+    },
+    [1080] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 30,
+      [4] = 0,
+    },
+    [1081] = {
+      [1] = 80,
+      [2] = 42,
+      [3] = "task",
+    },
+    [1082] = {
+      [1] = 9,
+      [2] = 42,
+      [3] = 42,
+      [4] = "spawn",
+    },
+    [1083] = {
+      [1] = 16,
+      [2] = 43,
+      [3] = 41,
+      [4] = 0,
+    },
+    [1084] = {
+      [1] = 13,
+      [2] = 42,
+      [3] = 2,
+      [4] = 2,
+    },
+    [1085] = {
+      [1] = 14,
+      [2] = 32,
+      [3] = 42,
+      [4] = 0,
+    },
+    [1086] = {
+      [1] = 27,
+      [2] = 42,
+      [3] = "task",
+    },
+    [1087] = {
+      [1] = 22,
+      [2] = 42,
+      [3] = 42,
+      [4] = "wait",
+    },
+    [1088] = {
+      [1] = 188,
+      [2] = 43,
+      [3] = 0.1,
+    },
+    [1089] = {
+      [1] = 104,
+      [2] = 42,
+      [3] = 2,
+      [4] = 1,
+    },
+    [1090] = {
+      [1] = 30,
+      [2] = 42,
+      [3] = "task",
+    },
+    [1091] = {
+      [1] = 88,
+      [2] = 42,
+      [3] = 42,
+      [4] = "wait",
+    },
+    [1092] = {
+      [1] = 20,
+      [2] = 42,
+      [3] = 1,
+      [4] = 1,
+    },
+    [1093] = {
+      [1] = 88,
+      [2] = 42,
+      [3] = 29,
+      [4] = "Character",
+    },
+    [1094] = {
+      [1] = 42,
+      [2] = 42,
+      [3] = 1096,
+      [4] = 1,
+    },
+    [1095] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1096,
+    },
+    [1096] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1089,
+    },
+    [1097] = {
+      [1] = 88,
+      [2] = 42,
+      [3] = 29,
+      [4] = "Character",
+    },
+    [1098] = {
+      [1] = 113,
+      [2] = 42,
+      [3] = 42,
+      [4] = "FindFirstChild",
+    },
+    [1099] = {
+      [1] = 18,
+      [2] = 44,
+      [3] = "HumanoidRootPart",
+    },
+    [1100] = {
+      [1] = 4,
+      [2] = 42,
+      [3] = 44,
+      [4] = 2,
+    },
+    [1101] = {
+      [1] = 60,
+      [2] = 42,
+      [3] = 1089,
+      [4] = 0,
+    },
+    [1102] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1089,
+    },
+    [1103] = {
+      [1] = 88,
+      [2] = 42,
+      [3] = 29,
+      [4] = "Character",
+    },
+    [1104] = {
+      [1] = 68,
+      [2] = 42,
+      [3] = 42,
+      [4] = "MoveTo",
+    },
+    [1105] = {
+      [1] = 12,
+      [2] = 44,
+      [3] = "Vector3",
+    },
+    [1106] = {
+      [1] = 1,
+      [2] = 44,
+      [3] = 44,
+      [4] = "new",
+    },
+    [1107] = {
+      [1] = 2,
+      [2] = 45,
+      [3] = -800,
+    },
+    [1108] = {
+      [1] = 10,
+      [2] = 46,
+      [3] = -39,
+    },
+    [1109] = {
+      [1] = 16,
+      [2] = 47,
+      [3] = -4000,
+    },
+    [1110] = {
+      [1] = 22,
+      [2] = 44,
+      [3] = 47,
+      [4] = 0,
+    },
+    [1111] = {
+      [1] = 32,
+      [2] = 42,
+      [3] = 0,
+      [4] = 1,
+    },
+    [1112] = {
+      [1] = 242,
+      [2] = 42,
+      [3] = 38,
+      [4] = 0,
+    },
+    [1113] = {
+      [1] = 20,
+      [2] = 42,
+      [3] = 1,
+      [4] = 1,
+    },
+    [1114] = {
+      [1] = 244,
+      [2] = 42,
+      [3] = 42,
+      [4] = 0,
+    },
+    [1115] = {
+      [1] = 240,
+      [2] = 43,
+      [3] = 29,
+      [4] = "WaitForChild",
+    },
+    [1116] = {
+      [1] = 16,
+      [2] = 45,
+      [3] = "PlayerGui",
+    },
+    [1117] = {
+      [1] = 11,
+      [2] = 43,
+      [3] = 45,
+      [4] = 2,
+    },
+    [1118] = {
+      [1] = 9,
+      [2] = 43,
+      [3] = 43,
+      [4] = "WaitForChild",
+    },
+    [1119] = {
+      [1] = 188,
+      [2] = 45,
+      [3] = "MainScreenGui",
+    },
+    [1120] = {
+      [1] = 213,
+      [2] = 43,
+      [3] = 45,
+      [4] = 2,
+    },
+    [1121] = {
+      [1] = 17,
+      [2] = 43,
+      [3] = 43,
+      [4] = "WaitForChild",
+    },
+    [1122] = {
+      [1] = 7,
+      [2] = 45,
+      [3] = "MoneyText",
+    },
+    [1123] = {
+      [1] = 16,
+      [2] = 43,
+      [3] = 45,
+      [4] = 2,
+    },
+    [1124] = {
+      [1] = 13,
+      [2] = 44,
+      [3] = 19,
+    },
+    [1125] = {
+      [1] = 209,
+      [2] = 45,
+      [3] = 21,
+      [4] = 1,
+    },
+    [1126] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 43,
+      [4] = 0,
+    },
+    [1127] = {
+      [1] = 209,
+      [2] = 46,
+      [3] = 13,
+      [4] = 3,
+    },
+    [1128] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 42,
+      [4] = 0,
+    },
+    [1129] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 45,
+      [4] = 0,
+    },
+    [1130] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 44,
+      [4] = 0,
+    },
+    [1131] = {
+      [1] = 209,
+      [2] = 47,
+      [3] = 0,
+      [4] = 4,
+    },
+    [1132] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 42,
+      [4] = 0,
+    },
+    [1133] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 45,
+      [4] = 0,
+    },
+    [1134] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 44,
+      [4] = 0,
+    },
+    [1135] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 10,
+      [4] = 0,
+    },
+    [1136] = {
+      [1] = 240,
+      [2] = 48,
+      [3] = 43,
+      [4] = "GetPropertyChangedSignal",
+    },
+    [1137] = {
+      [1] = 15,
+      [2] = 50,
+      [3] = "Text",
+    },
+    [1138] = {
+      [1] = 23,
+      [2] = 48,
+      [3] = 50,
+      [4] = 2,
+    },
+    [1139] = {
+      [1] = 25,
+      [2] = 48,
+      [3] = 48,
+      [4] = "Connect",
+    },
+    [1140] = {
+      [1] = 209,
+      [2] = 50,
+      [3] = 16,
+      [4] = 2,
+    },
+    [1141] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 46,
+      [4] = 0,
+    },
+    [1142] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 47,
+      [4] = 0,
+    },
+    [1143] = {
+      [1] = 230,
+      [2] = 48,
+      [3] = 50,
+      [4] = 1,
+    },
+    [1144] = {
+      [1] = 165,
+      [2] = 48,
+      [3] = "task",
+    },
+    [1145] = {
+      [1] = 19,
+      [2] = 48,
+      [3] = 48,
+      [4] = "wait",
+    },
+    [1146] = {
+      [1] = 188,
+      [2] = 49,
+      [3] = 0.5,
+    },
+    [1147] = {
+      [1] = 104,
+      [2] = 48,
+      [3] = 2,
+      [4] = 1,
+    },
+    [1148] = {
+      [1] = 13,
+      [2] = 48,
+      [3] = 27,
+    },
+    [1149] = {
+      [1] = 44,
+      [2] = 49,
+      [3] = 48,
+      [4] = 0,
+    },
+    [1150] = {
+      [1] = 28,
+      [2] = 49,
+      [3] = 1,
+      [4] = 1,
+    },
+    [1151] = {
+      [1] = 15,
+      [2] = 49,
+      [3] = "workspace",
+    },
+    [1152] = {
+      [1] = 12,
+      [2] = 49,
+      [3] = 49,
+      [4] = "FindFirstChild",
+    },
+    [1153] = {
+      [1] = 9,
+      [2] = 51,
+      [3] = "MAP",
+    },
+    [1154] = {
+      [1] = 8,
+      [2] = 49,
+      [3] = 51,
+      [4] = 2,
+    },
+    [1155] = {
+      [1] = 11,
+      [2] = 49,
+      [3] = 1157,
+      [4] = 1,
+    },
+    [1156] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1157,
+    },
+    [1157] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1168,
+    },
+    [1158] = {
+      [1] = 228,
+      [2] = 50,
+      [3] = 49,
+      [4] = "IsA",
+    },
+    [1159] = {
+      [1] = 238,
+      [2] = 52,
+      [3] = "Folder",
+    },
+    [1160] = {
+      [1] = 7,
+      [2] = 50,
+      [3] = 52,
+      [4] = 2,
+    },
+    [1161] = {
+      [1] = 20,
+      [2] = 50,
+      [3] = 1163,
+      [4] = 1,
+    },
+    [1162] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1163,
+    },
+    [1163] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1168,
+    },
+    [1164] = {
+      [1] = 228,
+      [2] = 50,
+      [3] = 49,
+      [4] = "Destroy",
+    },
+    [1165] = {
+      [1] = 104,
+      [2] = 50,
+      [3] = 2,
+      [4] = 1,
+    },
+    [1166] = {
+      [1] = 30,
+      [2] = 50,
+      [3] = "print",
+    },
+    [1167] = {
+      [1] = 188,
+      [2] = 51,
+      [3] = "MAP folder deleted.",
+    },
+    [1168] = {
+      [1] = 104,
+      [2] = 50,
+      [3] = 2,
+      [4] = 1,
+    },
+    [1169] = {
+      [1] = 13,
+      [2] = 50,
+      [3] = 20,
+    },
+    [1170] = {
+      [1] = 209,
+      [2] = 51,
+      [3] = 17,
+      [4] = 3,
+    },
+    [1171] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 50,
+      [4] = 0,
+    },
+    [1172] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 20,
+      [4] = 0,
+    },
+    [1173] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 19,
+      [4] = 0,
+    },
+    [1174] = {
+      [1] = 165,
+      [2] = 52,
+      [3] = "task",
+    },
+    [1175] = {
+      [1] = 13,
+      [2] = 52,
+      [3] = 52,
+      [4] = "spawn",
+    },
+    [1176] = {
+      [1] = 209,
+      [2] = 53,
+      [3] = 23,
+      [4] = 2,
+    },
+    [1177] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 31,
+      [4] = 0,
+    },
+    [1178] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 51,
+      [4] = 0,
+    },
+    [1179] = {
+      [1] = 104,
+      [2] = 52,
+      [3] = 2,
+      [4] = 1,
+    },
+    [1180] = {
+      [1] = 209,
+      [2] = 52,
+      [3] = 6,
+      [4] = 1,
+    },
+    [1181] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 29,
+      [4] = 0,
+    },
+    [1182] = {
+      [1] = 209,
+      [2] = 53,
+      [3] = 15,
+      [4] = 2,
+    },
+    [1183] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 29,
+      [4] = 0,
+    },
+    [1184] = {
+      [1] = 191,
+      [2] = 0,
+      [3] = 52,
+      [4] = 0,
+    },
+    [1185] = {
+      [1] = 42,
+      [2] = 31,
+      [3] = 1187,
+      [4] = 1,
+    },
+    [1186] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1187,
+    },
+    [1187] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1416,
+    },
+    [1188] = {
+      [1] = 88,
+      [2] = 54,
+      [3] = 29,
+      [4] = "Backpack",
+    },
+    [1189] = {
+      [1] = 113,
+      [2] = 54,
+      [3] = 54,
+      [4] = "FindFirstChild",
+    },
+    [1190] = {
+      [1] = 28,
+      [2] = 56,
+      [3] = "Combat",
+    },
+    [1191] = {
+      [1] = 5,
+      [2] = 54,
+      [3] = 56,
+      [4] = 2,
+    },
+    [1192] = {
+      [1] = 60,
+      [2] = 54,
+      [3] = 1194,
+      [4] = 0,
+    },
+    [1193] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1194,
+    },
+    [1194] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1203,
+    },
+    [1195] = {
+      [1] = 88,
+      [2] = 54,
+      [3] = 29,
+      [4] = "Character",
+    },
+    [1196] = {
+      [1] = 113,
+      [2] = 54,
+      [3] = 54,
+      [4] = "FindFirstChild",
+    },
+    [1197] = {
+      [1] = 5,
+      [2] = 56,
+      [3] = "Combat",
+    },
+    [1198] = {
+      [1] = 19,
+      [2] = 54,
+      [3] = 56,
+      [4] = 2,
+    },
+    [1199] = {
+      [1] = 60,
+      [2] = 54,
+      [3] = 1201,
+      [4] = 0,
+    },
+    [1200] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1201,
+    },
+    [1201] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1203,
+    },
+    [1202] = {
+      [1] = 242,
+      [2] = 54,
+      [3] = 40,
+      [4] = 0,
+    },
+    [1203] = {
+      [1] = 20,
+      [2] = 54,
+      [3] = 1,
+      [4] = 1,
+    },
+    [1204] = {
+      [1] = 30,
+      [2] = 54,
+      [3] = "ipairs",
+    },
+    [1205] = {
+      [1] = 224,
+      [2] = 55,
+      [3] = "workspace",
+    },
+    [1206] = {
+      [1] = 18,
+      [2] = 55,
+      [3] = 55,
+      [4] = "GetChildren",
+    },
+    [1207] = {
+      [1] = 12,
+      [2] = 55,
+      [3] = 56,
+      [4] = 0,
+    },
+    [1208] = {
+      [1] = 7,
+      [2] = 54,
+      [3] = 0,
+      [4] = 56,
+    },
+    [1209] = {
+      [1] = 20,
+      [2] = 0,
+      [3] = 1223,
+    },
+    [1210] = {
+      [1] = 228,
+      [2] = 59,
+      [3] = 58,
+      [4] = "IsA",
+    },
+    [1211] = {
+      [1] = 238,
+      [2] = 61,
+      [3] = "Part",
+    },
+    [1212] = {
+      [1] = 7,
+      [2] = 59,
+      [3] = 61,
+      [4] = 2,
+    },
+    [1213] = {
+      [1] = 15,
+      [2] = 59,
+      [3] = 1215,
+      [4] = 1,
+    },
+    [1214] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1215,
+    },
+    [1215] = {
+      [1] = 216,
+      [2] = 0,
+      [3] = 1223,
+    },
+    [1216] = {
+      [1] = 88,
+      [2] = 59,
+      [3] = 58,
+      [4] = "Name",
+    },
+    [1217] = {
+      [1] = 178,
+      [2] = 59,
+      [3] = 1221,
+      [4…"
